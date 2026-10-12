@@ -107,7 +107,7 @@ async function main() {
   section('0. 登录')
   const login = await api('/auth/login', {
     method: 'POST',
-    body: { username: 'student', password: '' }
+    body: { username: 'student', password: (process.env.EQ_PASS || '') }
   })
   const token = login.json?.data?.token
   ok('学生登录成功', !!token, `code=${login.json?.code}`)

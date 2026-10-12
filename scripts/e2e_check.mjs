@@ -270,7 +270,7 @@ async function main() {
   await visit('/login', '01-登录页', ['英语闯关', '登 录', '注册', '全键盘作答'])
 
   // ---------- 学生端 ----------
-  const stuLogin = await loginAs(os.environ.get('EQ_USER', 'student'), os.environ.get('EQ_PASS', ''))
+  const stuLogin = await loginAs((process.env.EQ_USER || 'student'), (process.env.EQ_PASS || ''))
   console.log('学生登录:', stuLogin)
   if (!String(stuLogin).startsWith('OK')) throw new Error('学生登录失败')
 

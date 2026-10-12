@@ -109,7 +109,7 @@ await sleep(2600)
 await shot('/login', 'T1-打样-登录页.png', null, 1800)
 
 // 登录取 token
-await login(os.environ.get('EQ_USER', 'student'), os.environ.get('EQ_PASS', ''))
+await login((process.env.EQ_USER || 'student'), (process.env.EQ_PASS || ''))
 await sleep(400)
 
 // ---------- 2. 首页 ----------

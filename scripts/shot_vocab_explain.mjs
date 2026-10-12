@@ -130,7 +130,7 @@ async function main() {
         const inputs = [...document.querySelectorAll('input')]
         if (inputs.length < 2) return { ok: false, why: 'input 不足 2 个: ' + inputs.length }
         setVal(inputs[0], 'student')
-        setVal(inputs[1], '')
+        setVal(inputs[1], (process.env.EQ_PASS || ''))
         const btn = [...document.querySelectorAll('button')].find(b => /登\\s*录|登录/.test(b.textContent || ''))
         if (!btn) return { ok: false, why: '未找到登录按钮' }
         btn.click()

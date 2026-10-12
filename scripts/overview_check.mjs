@@ -16,7 +16,7 @@
 
 const BASE = process.env.EQ_BASE || 'http://127.0.0.1:8090'
 const USER = process.env.EQ_USER || 'student'
-const PASS = process.env.EQ_PASS || ''
+const PASS = process.env.EQ_PASS || (process.env.EQ_PASS || '')
 
 let pass = 0
 let fail = 0

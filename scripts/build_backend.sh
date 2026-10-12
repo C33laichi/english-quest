@@ -94,7 +94,7 @@ english-quest 游戏化专升本英语闯关学习系统 —— 交付包
        方式B：本地起个静态服务，例如  npx serve frontend
 
 默认账号
-  学生： student / 
+  学生： student / $APP_STUDENT_PASSWORD
   管理员：admin   / $APP_ADMIN_PASSWORD
 
 关于 AI 能力

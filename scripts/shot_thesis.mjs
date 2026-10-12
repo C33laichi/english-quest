@@ -170,7 +170,7 @@ async function main() {
   }
 
   console.log('\n== 学生端 ==')
-  await login(os.environ.get('EQ_USER', 'student'), os.environ.get('EQ_PASS', ''))
+  await login((process.env.EQ_USER || 'student'), (process.env.EQ_PASS || ''))
 
   // 图 3-3 系统首页 = 图 4-2 学习主界面（同一页面，分别用于第 3 章与第 4 章）
   await shot('/home', '图3-3_系统首页.png')

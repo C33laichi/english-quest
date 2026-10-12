@@ -72,8 +72,10 @@ screenshots/T[0-9]-*.png
 screenshots/crop_*.png
 screenshots/diag-*.png
 
-# ---------- 本次建仓用的本地工具（含真值备份，绝不入库） ----------
+# ---------- 本次建仓用的本地工具（含真值，绝不入库） ----------
 _sanitized/
 _local_backup/
 _apply_sanitized.py
 _push_safe.py
+_sanitize.py
+_restore_local.py

@@ -35,7 +35,7 @@ except ImportError:
 VOICE = "en-US-AriaNeural"          # 美式女声，发音清晰，适合听写
 MYSQL = r"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
 DB_USER = "root"
-DB_PASS = os.environ.get('DB_PASSWORD', '')
+DB_PASS = os.environ.get('EQ_PASS', '')
 DB_NAME = "english_quest"
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -27,7 +27,7 @@ BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8090'
 USER, PWD = os.environ.get('EQ_USER', 'student'), os.environ.get('EQ_PASS', '')
 
 MYSQL = os.environ.get('EQ_MYSQL', 'mysql')
-DB_ARGS = ['-h', '::1', '-u', 'root', '-p' + os.environ.get('DB_PASSWORD', ''), 'english_quest',
+DB_ARGS = ['-h', '::1', '-u', 'root', ''-p' + os.environ.get('DB_PASSWORD', '')', 'english_quest',
            '--default-character-set=utf8mb4', '-N', '-B']
 
 passed = 0

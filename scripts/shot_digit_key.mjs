@@ -104,7 +104,7 @@ async function shot(url, file) {
 
 await send('Page.navigate', { url: `${BASE}/?t=${Date.now()}#/login` })
 await sleep(2200)
-await login(os.environ.get('EQ_USER', 'student'), os.environ.get('EQ_PASS', ''))
+await login((process.env.EQ_USER || 'student'), (process.env.EQ_PASS || ''))
 await sleep(300)
 await shot('/quiz/vocab/1', '24-选择题数字键药丸.png')
 

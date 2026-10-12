@@ -38,7 +38,7 @@ def check(name, cond, detail=""):
 print("=" * 60)
 print("1. 认证模块")
 print("=" * 60)
-r = call("POST", "/api/auth/login", body={"username": "student", "password": ""})
+r = call("POST", "/api/auth/login", body={"username": "student", "password": os.environ.get('EQ_PASS', '')})
 check("登录", r.get("code") == 200, f"-> {r.get('msg')}")
 token = r.get("data", {}).get("token")
 
@@ -52,7 +52,7 @@ r = call("GET", "/api/auth/me", token=token)
 check("获取当前用户", r.get("code") == 200 and r["data"]["username"] == "student",
       f"-> {r['data'].get('nickname') if r.get('code') == 200 else r.get('msg')}")
 
-r = call("POST", "/api/auth/register", body={"username": "smoke_user", "password": "", "nickname": "冒烟测试"})
+r = call("POST", "/api/auth/register", body={"username": "smoke_user", "password": os.environ.get('EQ_PASS', ''), "nickname": "冒烟测试"})
 check("注册新用户", r.get("code") in (200, 400), f"-> {r.get('msg')}")
 
 print()

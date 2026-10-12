@@ -50,7 +50,7 @@ print("听力听写 · 逐关解锁 端到端验证")
 print("=" * 62)
 
 # ---------- 登录 ----------
-st, r = call("POST", "/auth/login", body={"username": "student", "password": ""})
+st, r = call("POST", "/auth/login", body={"username": "student", "password": os.environ.get('EQ_PASS', '')})
 check("学生登录", st == 200 and r.get("code") == 200, r)
 TOKEN = r["data"]["token"]
 UID = r["data"]["userId"]

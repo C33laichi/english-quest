@@ -31,7 +31,7 @@ STUDENT, STUDENT_PWD = os.environ.get('EQ_USER', 'student'), os.environ.get('EQ_
 
 MYSQL = os.environ.get('EQ_MYSQL', 'mysql')
 DB = 'english_quest'
-DB_ARGS = ['-h', '::1', '-u', 'root', '-p' + os.environ.get('DB_PASSWORD', ''), DB,
+DB_ARGS = ['-h', '::1', '-u', 'root', ''-p' + os.environ.get('DB_PASSWORD', '')', DB,
            '--default-character-set=utf8mb4', '-N', '-B']
 
 passed = 0

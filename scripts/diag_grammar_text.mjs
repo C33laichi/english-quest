@@ -90,7 +90,7 @@ async function main() {
       const r = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: 'student', password: '' })
+        body: JSON.stringify({ username: 'student', password: (process.env.EQ_PASS || '') })
       });
       const b = await r.json();
       const d = b.data;

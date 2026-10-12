@@ -72,7 +72,7 @@ await send('Runtime.evaluate', {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'student', password: '' })
+      body: JSON.stringify({ username: 'student', password: (process.env.EQ_PASS || '') })
     })
     const d = await res.json()
     localStorage.setItem('eq_token', d.data.token)

@@ -201,7 +201,7 @@ async function main() {
   try {
     // 登录 + 强制深色（后台需换用管理员账号，见脚本头部的 EQ_USER / EQ_PASS）
     const USER = process.env.EQ_USER || 'student'
-    const PASS = process.env.EQ_PASS || ''
+    const PASS = process.env.EQ_PASS || (process.env.EQ_PASS || '')
     await cdp.goto(`${BASE}/#/login`, 600)
     await cdp.eval(`
       const r = await fetch('/api/auth/login', {

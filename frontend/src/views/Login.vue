@@ -46,7 +46,7 @@
               登 录
             </el-button>
             <p class="muted tip">
-              演示账号：student / 见 README　·　按 <kbd>Enter</kbd> 直接登录
+              演示账号：student / 见环境变量说明　·　按 <kbd>Enter</kbd> 直接登录
             </p>
           </el-tab-pane>
 

@@ -80,7 +80,7 @@ def main():
     print("=" * 60)
 
     # ---------- 登录 ----------
-    r = call("POST", "/auth/login", body={"username": "student", "password": ""})
+    r = call("POST", "/auth/login", body={"username": "student", "password": os.environ.get('EQ_PASS', '')})
     check("学生登录", r.get("code") == 200, r.get("msg", ""))
     if r.get("code") != 200:
         sys.exit(1)

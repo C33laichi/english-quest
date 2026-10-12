@@ -1,0 +1,98 @@
+server:
+  port: 8090
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: english-quest
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 注意：部分环境下本机 MySQL 的 IPv4 回环（127.0.0.1）不可达，需使用 IPv6 回环 [::1]
+    url: jdbc:mysql://[::1]:3306/english_quest?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=10000&socketTimeout=60000
+    # 数据库账号密码通过环境变量注入，仓库中不保存明文
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 10000
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    default-property-inclusion: non_null
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+  # 题库批量导入需要上传文件。Spring Boot 默认单文件上限只有 1MB，
+  # 不显式放开的话，稍大一点的 Excel 会直接抛 MaxUploadSizeExceededException。
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
+      table-prefix: ""
+
+# 业务配置
+app:
+  # 初始化账号的密码（仅在账号不存在时生效）
+  init:
+    student-password: ${APP_STUDENT_PASSWORD:}
+    admin-password: ${APP_ADMIN_PASSWORD:}
+  # 管理员在后台「重置密码」后的默认密码
+  admin:
+    reset-default-password: ${APP_RESET_PASSWORD:}
+  jwt:
+    # 生产环境务必改为环境变量注入
+    secret: ${JWT_SECRET:english-quest-dev-only-jwt-secret-change-me}
+    expire-days: 7
+  ai:
+    # ============================================================
+    #  DeepSeek API Key 填这里（二选一）
+    # ------------------------------------------------------------
+    #  方式一（推荐，不改代码）：设置环境变量 AI_API_KEY 后重启后端
+    #      Windows 临时生效：set AI_API_KEY=sk-xxxxxxxx
+    #      永久生效：系统属性 → 环境变量 → 新建 AI_API_KEY
+    #  方式二（直接写在下面这一行的冒号后面）：
+    #      api-key: sk-xxxxxxxx
+    #
+    #  mock=false 但没填 Key 时，会自动走本地生成（不发任何网络请求）。
+    #  Key 一旦填上（写这里或设环境变量 AI_API_KEY），自动切到真实大模型，
+    #  无需再改 mock。本地生成的内容是真实可用的，不是占位符：
+    #    · 错题讲解 → 按「你实际选的那个错项」生成（不是占位符）
+    #    · 单词短文 → 用你勾选的单词拼成本地范文
+    #    · 语法拓展 → 复述考点规则 + 原题判定依据
+    # ============================================================
+    mock: false
+    base-url: https://api.deepseek.com/v1/chat/completions
+    api-key: ${AI_API_KEY:}
+    model: deepseek-chat
+    # 每日调用上限：0 或负数 = 不限次数
+    # 手动点「再来一题」的每日上限
+    daily-limit: 0
+    # 错题讲解的每日上限，与出题分开统计（讲解由答错自动触发，频次要高得多）
+    explain-daily-limit: 0
+    # AI 对话的每日上限，同样与出题分开统计（一次问答一来一回，轮次天然更多）
+    # 填了 Key 想控成本时可以改成具体数字，比如 30
+    chat-daily-limit: 0
+    timeout-ms: 15000
+  point:
+    daily-limit: 200
+    answer-point: 2
+    level-point: 10
+    full-score-point: 20
+    login-point: 5
+    answer-daily-limit: 100
+
+logging:
+  level:
+    root: info
+    com.cc.englishquest: debug

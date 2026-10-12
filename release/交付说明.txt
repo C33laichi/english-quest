@@ -1,0 +1,34 @@
+english-quest 游戏化专升本英语闯关学习系统 —— 交付包
+
+目录结构
+  backend/english-quest.jar   后端服务（Spring Boot，内嵌 Tomcat）
+  frontend/                   前端静态文件（Vue3 构建产物，含音频与字体）
+  sql/                        数据库脚本，按编号顺序执行
+
+部署步骤
+  1. 建库并导入数据（MySQL 8）：
+       mysql -u root -p -e "CREATE DATABASE english_quest DEFAULT CHARSET utf8mb4;"
+       mysql -u root -p english_quest < sql/01_schema.sql
+       mysql -u root -p english_quest < sql/02_init_vocab.sql
+       mysql -u root -p english_quest < sql/03_init_grammar.sql
+       mysql -u root -p english_quest < sql/04_init_task.sql
+       mysql -u root -p english_quest < sql/05_init_listen.sql
+       mysql -u root -p english_quest < sql/06_wrong_explain.sql
+
+  2. 启动后端（默认 8090）：
+       java -jar backend/english-quest.jar
+
+  3. 打开前端：
+       方式A：把 frontend/ 整个目录交给 Nginx 等静态服务器托管
+       方式B：本地起个静态服务，例如  npx serve frontend
+
+默认账号
+  学生： student / 见 README
+  管理员：admin   / ****
+
+关于 AI 能力
+  本项目 AI 讲解/生成能力为「本地离线生成」（source=MOCK），断网可正常运行，
+  不依赖任何外部 API 密钥。
+
+数据库连接如需修改，请改 application.yml 后重新打包：
+  bash scripts/build_backend.sh

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>英语闯关 · 专升本英语闯关学习系统</title>
+    <script>
+      /*
+       * 主题必须在**首屏渲染之前**就写到 <html> 上，否则深色用户每次刷新
+       * 都会先看到一帧白底再闪成深色（FOUC），非常刺眼。
+       *
+       * 这段逻辑与 src/store/theme.js 的 readStoredMode / prefersDark 一致，
+       * 是刻意的重复：打包产物还没加载，内联脚本必须先自己跑一遍。
+       * 改 key 名或默认值时两边都要改。
+       */
+      ;(function () {
+        var mode = 'system'
+        try {
+          var stored = localStorage.getItem('eq_theme')
+          if (stored === 'light' || stored === 'dark' || stored === 'system') mode = stored
+        } catch (e) {
+          /* 隐私模式下读不到 localStorage，按默认走即可 */
+        }
+        var dark =
+          mode === 'dark' ||
+          (mode === 'system' &&
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches)
+        var el = document.documentElement
+        el.dataset.theme = dark ? 'dark' : 'light'
+        el.style.colorScheme = dark ? 'dark' : 'light'
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

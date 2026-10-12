@@ -1,0 +1,2209 @@
+/* ============================================================
+   游戏化专升本英语闯关学习系统 · 桌面端设计系统
+   面向「键盘输入」优化的宽屏布局
+
+   ------------------------------------------------------------
+   视觉语言：原始紫靛配色（Original Indigo）
+   改造依据：taste-skill（Leonxlnx/taste-skill, MIT）
+
+   注：本项目 2026-09-11 做过一轮 hue-wired 青绿配色改造，
+   同日按用户要求还原为最初的紫靛配色。当前为还原后状态：
+   颜色回到原值，字体（Geist 自托管）/ 圆角收敛 / 动效曲线 /
+   非对称布局 / EP 主题接管等结构与去套路化改动予以保留。
+
+   Design Read：
+     桌面端教育闯关系统 for 专升本备考学生（长时间专注刷题），
+     冷静精确的键盘工具气质，原生 CSS + Geist + 单一强调色。
+
+   三个 dial（按 taste-skill §1.A「trust-first / accessibility-critical」行取，
+   而非落地页基线 8/6/4 —— 这是功能型学习工具，密集数据是内容不是装饰）：
+     DESIGN_VARIANCE  4   克制的非对称，不做花哨破格
+     MOTION_INTENSITY 3   只保留状态反馈类动效
+     VISUAL_DENSITY   5   题库/看板需要信息密度
+
+   保留的 AI Tell 修正（与颜色无关，故未随配色一起还原）：
+     - Inter 默认字体         → Geist Variable（本地自托管）
+     - 五种圆角混用           → 统一 10px 体系（形状一致性锁）
+     - 纯黑阴影               → 带冷调色相的阴影
+     - 无字重分层（400/700）  → 引入 500/600
+     - 纯平背景               → 极细网格 + 淡渐变，破除数字感
+   ============================================================ */
+
+/* ---------- 自托管字体 ---------- */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/geist-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/geist-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+:root {
+  /* ============================================================
+     调色板：原始紫靛配色（Original Indigo）
+     ------------------------------------------------------------
+     这是本项目最初的配色方案，2026-09-11 按用户要求从
+     hue-wired 青绿方案还原回来。
+
+     注意：下面的中性色是冷调蓝灰（hue 210-220），与强调色
+     （hue 245-250）同属冷色温族，并非"两套色温打架"。
+     还原时按原值逐项对照恢复，只改颜色，字体/圆角/动效保持不变。
+     ============================================================ */
+
+  /* ---------- 强调色：全站唯一（紫靛家族） ---------- */
+  --eq-primary-deep: #3730a3;
+  --eq-primary-dark: #4338ca;
+  --eq-primary: #4f46e5;
+  --eq-primary-bright: #6366f1;
+  --eq-primary-soft: rgba(79, 70, 229, 0.08);
+  --eq-primary-line: rgba(79, 70, 229, 0.22);
+  --eq-gradient: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+
+  /* ---------- 强调色的「文字」形态 ----------
+     浅色主题下深＝醒目，所以它就是 primary-dark。
+     但它必须是一个**独立 token**：primary-dark 同时还要承担
+     「主按钮 hover 填充」，在深色主题里这两个角色的明度需求正好相反
+     （文字要变亮才看得清，填充要够深才能压住白字）。
+     合并成一个变量的话，深色主题必然二选一坏掉。 */
+  --eq-accent: #4338ca;
+
+  /* ---------- 中性色：冷调蓝灰 ---------- */
+  --eq-bg: #f4f6f8;
+  --eq-bg-deep: #eceff3;
+  --eq-surface: #ffffff;
+  --eq-surface-sunken: #f8fafb;
+  --eq-side: #14181f;
+  --eq-side-2: #1c212b;
+  --eq-side-3: #262c38;
+  --eq-side-text: #98a2b3;
+  --eq-side-hover: rgba(255, 255, 255, 0.06);
+
+  /* ---------- 侧栏：浅色主题下的浅底深字 ----------
+     为什么不直接改 --eq-side：登录页（Login.vue）和后台布局（AdminLayout.vue）
+     仍拿它当"深色底板"用 —— 那些地方本来就该是深色的。
+     侧栏则必须跟着主题走，否则切到白天会留一条黑边，所以单独开一组 token。 */
+  --eq-sidebar-bg: #ffffff;
+  --eq-sidebar-text: #5b6472;
+  /* 侧栏上的"重点字"（品牌名 / 用户名 / 悬停与选中项）：浅色下要深、深色下要白 */
+  --eq-sidebar-strong: #10151c;
+  --eq-sidebar-hover: rgba(16, 21, 28, 0.05);
+  --eq-sidebar-line: rgba(16, 21, 28, 0.09);
+  --eq-sidebar-label: #98a2b3;
+  --eq-sidebar-active-bg: rgba(79, 70, 229, 0.1);
+  --eq-sidebar-scroll: rgba(16, 21, 28, 0.18);
+
+  /* ---------- 首页横幅：浅色主题下的淡强调底 + 深字 ----------
+     横幅原来写死 --eq-side（深炭），切到白天会整块发黑。
+     这里改成按主题翻转的一组 token，视觉上对齐设计系统里
+     「主线入口卡」的做法（primary-soft 底 + primary-line 描边）。 */
+  --eq-hero-bg: rgba(79, 70, 229, 0.08);
+  --eq-hero-border: rgba(79, 70, 229, 0.2);
+  --eq-hero-text: #10151c;
+  --eq-hero-sub: #5b6472;
+  --eq-hero-line: rgba(16, 21, 28, 0.1);
+  --eq-hero-track: rgba(79, 70, 229, 0.18);
+  --eq-hero-glow-a: rgba(79, 70, 229, 0.1);
+  --eq-hero-glow-b: rgba(148, 163, 184, 0.1);
+  --eq-text: #10151c;
+  --eq-text-sub: #5b6472;
+  --eq-text-mute: #8b94a3;
+  --eq-border: #dfe4ea;
+  --eq-border-soft: #eaeef2;
+  --eq-line: #cbd3dd;
+
+  /* ---------- 语义色：降饱和保留（教学反馈可读性优先） ----------
+     taste-skill §4.2 要求单一强调色，此处以 override 处理：
+     UI 强调色唯一（紫靛），语义三色仅用于判分反馈。 */
+  --eq-success: #15803d;
+  --eq-success-bg: rgba(21, 128, 61, 0.08);
+  --eq-success-line: rgba(21, 128, 61, 0.3);
+  --eq-danger: #b91c1c;
+  --eq-danger-bg: rgba(185, 28, 28, 0.07);
+  --eq-danger-line: rgba(185, 28, 28, 0.28);
+  --eq-warning: #a16207;
+  --eq-warning-bg: rgba(161, 98, 7, 0.08);
+  --eq-warning-line: rgba(161, 98, 7, 0.28);
+  /* 「星级 / 积分」不再用第二个强调色，收敛为琥珀提示色 */
+  --eq-gold: #a16207;
+
+  /* ---------- 尺寸 ---------- */
+  --eq-side-w: 232px;
+  --eq-keybar-h: 38px;
+  --eq-content-max: 1120px;
+
+  /* ---------- 形状一致性锁：单一 10px 体系 ----------
+     taste-skill §4.4 要求全站一套圆角。此前 12/10/8/6/pill 五种混用，
+     现收敛为「容器 10 / 内部 7 / 药丸 full」三条成文规则。 */
+  --eq-radius: 10px;
+  --eq-radius-sm: 7px;
+  --eq-radius-xs: 5px;
+  --eq-radius-pill: 999px;
+
+  /* ---------- 阴影：色相跟随冷调，不用纯黑 ---------- */
+  --eq-shadow: 0 1px 2px rgba(16, 21, 28, 0.05), 0 1px 1px rgba(16, 21, 28, 0.03);
+  --eq-shadow-md: 0 4px 14px rgba(16, 21, 28, 0.07), 0 1px 3px rgba(16, 21, 28, 0.04);
+  --eq-shadow-lg: 0 14px 36px rgba(16, 21, 28, 0.11), 0 2px 6px rgba(16, 21, 28, 0.05);
+  /* 强调色发光仅用于键盘焦点，不做装饰性外发光 */
+  --eq-glow: 0 0 0 3px rgba(79, 70, 229, 0.16);
+
+  /* ---------- 字体 ---------- */
+  --eq-font: 'Geist', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB',
+    system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --eq-mono: 'Geist Mono', 'JetBrains Mono', 'Cascadia Code', Consolas,
+    'Courier New', monospace;
+
+  /* 键盘焦点环 —— 键盘操作用户必须看得见焦点 */
+  --eq-focus: 0 0 0 3px rgba(79, 70, 229, 0.3);
+
+  /* ---------- 层级刻度（避免散落的 z-index: 9999） ---------- */
+  --z-base: 1;
+  --z-sticky: 20;
+  --z-dropdown: 40;
+  --z-overlay: 60;
+  --z-modal: 80;
+  --z-toast: 100;
+
+  /* ---------- 动效：MOTION_INTENSITY 3，只做状态反馈 ---------- */
+  --eq-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --eq-dur: 180ms;
+
+  /* ---------- 热力图色带 ----------
+     给 ECharts 用的六个活动档 + 一个「完全没活动」的空档。
+     必须做成 token 而不是把色值写死进 Stats.vue：canvas 不解析 CSS 变量，
+     但 Stats.vue 里的 resolveCssVars() 会把 var(--x) 读成真实色值再交给 ECharts，
+     所以这里定义一次，浅色/深色各一套，图表就能跟着主题走。
+     相邻档位的相对亮度比控制在 1.25-1.60 倍，末档即"最活跃"。
+     改色前先跑 scripts/theme_contrast.py 体检，别凭感觉挑。 */
+  --eq-heat-0: #e2e3ea;
+  --eq-heat-1: #c7c6f2;
+  --eq-heat-2: #a09aee;
+  --eq-heat-3: #7b73e9;
+  --eq-heat-4: #5f55e6;
+  --eq-heat-5: #4f46e5;
+  --eq-heat-empty: #f1f2f6;
+
+  /* 折线图面积渐变的两端（浅色值与原硬编码一致，不许动） */
+  --eq-area-from: rgba(79, 70, 229, 0.26);
+  --eq-area-to: rgba(79, 70, 229, 0.02);
+
+  /* ---------- 页面底纹 ----------
+     极淡的同色相径向光晕 + 细网格（破除纯平背景的"数字塑料感"）。
+     抽成 token 是为了让深色主题能整体压暗，否则深色页上会浮着两团白雾。 */
+  --eq-bg-glow: rgba(79, 70, 229, 0.05);
+  --eq-bg-glow-2: rgba(20, 33, 45, 0.04);
+  --eq-bg-grid: rgba(16, 21, 28, 0.028);
+
+  /* 遮罩层：快捷键面板等 */
+  --eq-mask: rgba(16, 20, 35, 0.45);
+
+  /* 主按钮投影：跟随强调色相，不用纯黑 */
+  --eq-btn-shadow: rgba(79, 70, 229, 0.24);
+  --eq-btn-shadow-hover: rgba(79, 70, 229, 0.3);
+
+  /* ---------- 听力听写的专用值 ----------
+     这些在浅色主题下原本是写死在 ListenPractice.vue 里的字面量，
+     提成 token 只是为了深色主题能整体翻转（浅色值保持原样）。
+     底衬短横必须在深底上"亮于底色"才看得见，浅底上则要"暗于底色"，
+     方向相反，没法用同一个值。 */
+  --eq-hint-tick: #9aa1bd;
+  --eq-hint-tick-active: #6f78a8;
+  /* 警示面板里的行内 code / 键帽：浅底上的"压暗"在深色主题要变成"提亮" */
+  --eq-code-bg: rgba(0, 0, 0, 0.06);
+  --eq-invert-bg: rgba(255, 255, 255, 0.7);
+  --eq-invert-border: rgba(0, 0, 0, 0.12);
+  /* 拼错单词的删除线：深色下要用提亮后的危险色才看得清 */
+  --eq-strike: rgba(220, 38, 38, 0.5);
+  --eq-strike-soft: rgba(220, 38, 38, 0.45);
+}
+
+/* ============================================================
+   二、Element Plus 主题接管
+   ------------------------------------------------------------
+   Element Plus 自带一套默认主题（强调色 #409eff 蓝紫）。
+   不接管的话，tabs 下划线、按钮、分页、开关、日期选择器等
+   都会把默认蓝从缝隙里漏回来，前面的 token 改造就白做了。
+   这里把 EP 的 CSS 变量映射到我们的紫靛强调色体系。
+   ============================================================ */
+:root {
+  --el-color-primary: #4f46e5;
+  /* 以下阶梯按紫靛色相派生，不要手填别的色相 */
+  --el-color-primary-light-3: #7c74ec;
+  --el-color-primary-light-5: #a29df2;
+  --el-color-primary-light-7: #c8c5f8;
+  --el-color-primary-light-8: #dbd9fa;
+  --el-color-primary-light-9: #eeedfd;
+  --el-color-primary-dark-2: #4338ca;
+
+  --el-color-success: var(--eq-success);
+  --el-color-success-light-9: var(--eq-success-bg);
+  --el-color-danger: var(--eq-danger);
+  --el-color-danger-light-9: var(--eq-danger-bg);
+  --el-color-warning: var(--eq-warning);
+  --el-color-warning-light-9: var(--eq-warning-bg);
+
+  --el-text-color-primary: var(--eq-text);
+  --el-text-color-regular: var(--eq-text-sub);
+  --el-text-color-secondary: var(--eq-text-mute);
+  --el-text-color-placeholder: var(--eq-text-mute);
+
+  --el-border-color: var(--eq-border);
+  --el-border-color-light: var(--eq-border-soft);
+  --el-border-color-lighter: var(--eq-border-soft);
+  --el-border-radius-base: var(--eq-radius-sm);
+  --el-border-radius-small: var(--eq-radius-xs);
+  --el-font-family: var(--eq-font);
+  --el-font-size-base: 14px;
+  --el-box-shadow-light: var(--eq-shadow);
+}
+
+/* 走查 EP 组件的圆角，任何残留的默认值都会被肉眼抓到 */
+.el-button,
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper,
+.el-dialog,
+.el-message,
+.el-message-box,
+.el-card,
+.el-tag {
+  border-radius: var(--eq-radius-sm);
+}
+.el-dialog,
+.el-message-box {
+  border-radius: var(--eq-radius);
+}
+
+/*
+ * 浏览器自动填充（Chrome / Edge 保存密码后）会把 <input> 本身染成默认淡蓝紫底
+ * （#e8f0fe），而且**只盖住 <input>、不盖 wrapper 的图标和边框** ——
+ * 看起来就是「实际输入框比显示出来的框窄一截，颜色还不对」。
+ *
+ * 浏览器对 autofill 状态下的 background-color 不响应，只能用内阴影把底色铺满
+ * （1000px 保证盖满），并锁定文字/光标颜色。颜色走主题 token，浅色/深色自动正确；
+ * 阴影只作用于 <input> 自己的盒子，wrapper 的边框与前后图标不会被盖住。
+ * transition 那行是兜底：部分 Chrome 版本靠超长过渡抑制底色闪现。
+ */
+.el-input__inner:-webkit-autofill,
+.el-input__inner:-webkit-autofill:hover,
+.el-input__inner:-webkit-autofill:focus,
+.el-textarea__inner:-webkit-autofill,
+.el-textarea__inner:-webkit-autofill:hover,
+.el-textarea__inner:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--eq-surface) inset;
+  -webkit-text-fill-color: var(--eq-text);
+  caret-color: var(--eq-text);
+  transition: background-color 99999s ease-in-out 0s;
+}
+
+/* Tabs：默认是「底部一条细线 + 蓝色下划线」，换成翡翠 */
+.el-tabs__item {
+  font-weight: 500;
+  color: var(--eq-text-sub);
+  transition: color var(--eq-dur) var(--eq-ease);
+}
+.el-tabs__item.is-active {
+  color: var(--eq-accent);
+  font-weight: 600;
+}
+.el-tabs__item:hover {
+  color: var(--eq-accent);
+}
+.el-tabs__active-bar {
+  background-color: var(--eq-primary);
+  height: 2px;
+  border-radius: var(--eq-radius-pill);
+}
+.el-tabs__nav-wrap::after {
+  background-color: var(--eq-border-soft);
+  height: 1px;
+}
+
+/* 分页 / 开关 / 单选 / 复选一律对齐强调色 */
+.el-pagination.is-background .el-pager li.is-active {
+  background-color: var(--eq-primary);
+}
+.el-switch.is-checked .el-switch__core {
+  background-color: var(--eq-primary);
+  border-color: var(--eq-primary);
+}
+.el-radio-button__original-radio:checked + .el-radio-button__inner {
+  background-color: var(--eq-primary);
+  border-color: var(--eq-primary);
+  box-shadow: -1px 0 0 0 var(--eq-primary);
+}
+.el-checkbox__input.is-checked .el-checkbox__inner,
+.el-checkbox__input.is-indeterminate .el-checkbox__inner {
+  background-color: var(--eq-primary);
+  border-color: var(--eq-primary);
+}
+.el-checkbox__input.is-checked + .el-checkbox__label {
+  color: var(--eq-accent);
+}
+
+/* 表格：去掉 EP 默认的表头灰底，改走我们的浅面板色 */
+.el-table th.el-table__cell {
+  background-color: var(--eq-surface-sunken);
+  color: var(--eq-text-sub);
+  font-weight: 500;
+}
+.el-table td.el-table__cell,
+.el-table th.el-table__cell.is-leaf {
+  border-bottom-color: var(--eq-border-soft);
+}
+.el-table--border::after,
+.el-table--group::after,
+.el-table::before {
+  background-color: var(--eq-border-soft);
+}
+
+/* 进度条 / 加载 */
+.el-progress-bar__inner {
+  background-color: var(--eq-primary);
+  border-radius: var(--eq-radius-pill);
+}
+.el-progress-bar__outer {
+  background-color: var(--eq-border-soft);
+  border-radius: var(--eq-radius-pill);
+}
+
+/* 链接与文字按钮 */
+.el-link.el-link--primary {
+  color: var(--eq-accent);
+}
+
+/* ============================================================
+   三、基础重置
+   ============================================================ */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  color: var(--eq-text);
+  font-family: var(--eq-font);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* 数据密集型界面统一启用等宽数字，避免数值跳动 */
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * 正文底板：极淡的同色相径向渐变 + 细网格。
+ * taste-skill §4.4：纯平背景读起来像未完成的矢量稿，
+ * 加一层几乎察觉不到的纹理能立刻摆脱「数字塑料感」。
+ * 两个渐变都用强调色相，只是明度方向相反，避免出现冷暖打架。
+ */
+body {
+  background-color: var(--eq-bg);
+  background-image:
+    radial-gradient(1100px 620px at 12% -8%, var(--eq-bg-glow), transparent 62%),
+    radial-gradient(900px 540px at 96% 4%, var(--eq-bg-glow-2), transparent 58%),
+    linear-gradient(var(--eq-bg-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--eq-bg-grid) 1px, transparent 1px);
+  background-size: auto, auto, 26px 26px, 26px 26px;
+  background-attachment: fixed;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* 键帽 / 代码 / 数字统一走等宽字体 */
+kbd,
+code,
+pre {
+  font-family: var(--eq-mono);
+}
+
+/* 键盘焦点：全站统一可见环，这是可用性要求不是可选项 */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--eq-focus);
+  border-radius: var(--eq-radius-xs);
+}
+
+/* 大标题收紧字距，小标签放宽字距（taste-skill §4.1） */
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+h1 {
+  letter-spacing: -0.028em;
+}
+
+/* 段落限宽，避免行长过宽伤可读性 */
+p {
+  text-wrap: pretty;
+}
+
+/* 尊重系统「减少动态效果」设置 —— taste-skill §6.B 强制要求 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ============================================================
+   一、桌面骨架
+   ============================================================ */
+.desktop-shell {
+  display: grid;
+  grid-template-columns: var(--eq-side-w) minmax(0, 1fr);
+  min-height: 100vh;
+  padding-bottom: var(--eq-keybar-h);
+}
+
+.main-area {
+  min-width: 0;
+  padding: 26px 32px 48px;
+}
+
+.main-inner {
+  max-width: var(--eq-content-max);
+  margin: 0 auto;
+}
+
+/* 无侧边栏的沉浸页（登录 / 答题） */
+.bare-layout {
+  min-height: 100vh;
+}
+
+.main-bare {
+  min-height: calc(100vh - var(--eq-keybar-h));
+}
+
+/* ============================================================
+   二、左侧导航栏
+   ============================================================ */
+.side-nav {
+  position: sticky;
+  top: 0;
+  height: calc(100vh - var(--eq-keybar-h));
+  background: var(--eq-sidebar-bg);
+  color: var(--eq-sidebar-text);
+  /* 浅色主题下侧栏是白底，和白底内容区之间必须有一道发丝线，
+     否则两块会连成一片、看不出布局边界；深色下同理（层级只差一点点）。 */
+  border-right: 1px solid var(--eq-sidebar-line);
+  display: flex;
+  flex-direction: column;
+  padding: 18px 12px 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.side-nav::-webkit-scrollbar {
+  width: 6px;
+}
+.side-nav::-webkit-scrollbar-thumb {
+  background: var(--eq-sidebar-scroll);
+  border-radius: 3px;
+}
+
+.side-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px 18px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--eq-sidebar-line);
+  flex-shrink: 0;
+}
+
+.side-brand-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--eq-radius-sm);
+  /* 徽标用纯色而非渐变：taste-skill §9.A 反对装饰性渐变 */
+  background: var(--eq-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  letter-spacing: -0.02em;
+}
+
+.side-brand-text {
+  min-width: 0;
+}
+.side-brand-text b {
+  display: block;
+  color: var(--eq-sidebar-strong);
+  font-size: 14px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.side-brand-text span {
+  display: block;
+  font-size: 11px;
+  color: var(--eq-text-sub);
+  white-space: nowrap;
+}
+
+.side-group-label {
+  font-size: 11px;
+  color: var(--eq-sidebar-label);
+  letter-spacing: 0.6px;
+  padding: 14px 10px 6px;
+  white-space: nowrap;
+}
+
+.side-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--eq-radius-sm);
+  font-size: 13.5px;
+  color: var(--eq-sidebar-text);
+  cursor: pointer;
+  margin-bottom: 2px;
+  position: relative;
+  white-space: nowrap;
+  transition: background var(--eq-dur) var(--eq-ease),
+    color var(--eq-dur) var(--eq-ease);
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+
+.side-item:hover {
+  background: var(--eq-sidebar-hover);
+  color: var(--eq-sidebar-strong);
+}
+
+/*
+ * 当前页标记：左侧一道竖条 + 轻底色，不用整块渐变填充。
+ * taste-skill §4.5 要求「导航必须能看出当前在哪一页」，
+ * 但整块高饱和填充会盖掉侧栏的层级感。
+ */
+.side-item.active {
+  background: var(--eq-sidebar-active-bg);
+  color: var(--eq-sidebar-strong);
+  font-weight: 600;
+}
+
+.side-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 17px;
+  border-radius: 0 3px 3px 0;
+  background: var(--eq-primary-bright);
+}
+
+.side-item .ico {
+  font-size: 15px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.side-item .txt {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side-badge {
+  background: var(--eq-danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 8px;
+  padding: 3px 6px;
+  flex-shrink: 0;
+}
+
+.side-foot {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--eq-sidebar-line);
+  flex-shrink: 0;
+}
+
+/*
+ * 用户区本身是一个按钮，点开右上角的账号菜单（含主题切换）。
+ * 之前这里是「头像 + 名字 + 快捷键/退出两个小按钮」，
+ * 按钮挤在侧栏底部既占高度又和导航抢注意力，改为一处入口收拢。
+ */
+.side-user {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 6px;
+  margin-bottom: 2px;
+  border: 1px solid transparent;
+  border-radius: var(--eq-radius-sm);
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--eq-dur) var(--eq-ease),
+    border-color var(--eq-dur) var(--eq-ease);
+}
+
+.side-user:hover,
+.side-user.open {
+  background: var(--eq-sidebar-hover);
+  border-color: var(--eq-sidebar-line);
+}
+
+.side-user:focus-visible {
+  outline: none;
+  box-shadow: var(--eq-focus);
+}
+
+.side-user-caret {
+  flex-shrink: 0;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--eq-sidebar-text);
+  transition: transform var(--eq-dur) var(--eq-ease);
+}
+
+.side-user.open .side-user-caret {
+  transform: rotate(90deg);
+}
+
+.side-user-text {
+  min-width: 0;
+  flex: 1;
+}
+.side-user-text b {
+  display: block;
+  color: var(--eq-sidebar-strong);
+  font-size: 13px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.side-user-text span {
+  display: block;
+  font-size: 11px;
+  color: var(--eq-text-sub);
+  white-space: nowrap;
+}
+
+/* ============================================================
+   三、底部键位提示条
+   ============================================================ */
+.keybar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--eq-keybar-h);
+  background: var(--eq-surface);
+  border-top: 1px solid var(--eq-border);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 16px;
+  font-size: 12px;
+  color: var(--eq-text-sub);
+  z-index: 900;
+  overflow: hidden;
+}
+
+.keybar-hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.keybar-tip {
+  margin-left: 4px;
+  color: var(--eq-text-mute);
+}
+
+.keybar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.keybar-status {
+  color: var(--eq-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 键帽 */
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 21px;
+  height: 21px;
+  padding: 0 5px;
+  font-family: var(--eq-mono);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--eq-text-sub);
+  background: var(--eq-surface-sunken);
+  border: 1px solid var(--eq-line);
+  border-bottom-width: 2px;
+  border-radius: var(--eq-radius-xs);
+  white-space: nowrap;
+}
+
+/* ============================================================
+   四、页面通用
+   ============================================================ */
+.page {
+  max-width: var(--eq-content-max);
+  margin: 0 auto;
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.page-desc {
+  font-size: 13px;
+  color: var(--eq-text-sub);
+  margin-top: 4px;
+}
+
+/*
+ * 卡片：去掉「边框 + 阴影 + 白底」三件套同时出现。
+ * taste-skill §4.4 只在需要表达层级时才用抬升，
+ * 所以默认只留极淡的描边，阴影靠 hover 才浮现。
+ */
+.card {
+  background: var(--eq-surface);
+  border: 1px solid var(--eq-border-soft);
+  border-radius: var(--eq-radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: border-color var(--eq-dur) var(--eq-ease),
+    box-shadow var(--eq-dur) var(--eq-ease);
+}
+
+/* 需要强调的浮起卡片（如英雄区、成绩结算）才加阴影 */
+.card-raised {
+  border-color: var(--eq-border);
+  box-shadow: var(--eq-shadow-md);
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.muted {
+  color: var(--eq-text-sub);
+  font-size: 13px;
+}
+
+.grid {
+  display: grid;
+  gap: 16px;
+}
+.grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.empty {
+  text-align: center;
+  color: var(--eq-text-sub);
+  padding: 56px 16px;
+  font-size: 14px;
+}
+
+.empty .icon {
+  font-size: 42px;
+  display: block;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+/* ---------- 桌面横幅 ---------- */
+.hero {
+  background: var(--eq-gradient);
+  color: #fff;
+  border-radius: var(--eq-radius);
+  padding: 24px 26px;
+}
+
+.hero-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.hero-name {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.hero-sub {
+  font-size: 13px;
+  opacity: 0.88;
+  margin-top: 4px;
+}
+
+.hero-stats {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.hero-stat {
+  flex: 1;
+  max-width: 160px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.hero-stat b {
+  display: block;
+  font-size: 20px;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-stat span {
+  font-size: 11.5px;
+  opacity: 0.88;
+}
+
+/* ============================================================
+   五、关卡
+   ============================================================ */
+.level-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 14px;
+}
+
+.level-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border-radius: var(--eq-radius);
+  background: var(--eq-surface);
+  border: 1px solid var(--eq-border);
+  box-shadow: var(--eq-shadow);
+  cursor: pointer;
+  transition: transform 0.14s, box-shadow 0.14s, border-color 0.14s;
+}
+
+.level-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--eq-shadow-md);
+  border-color: var(--eq-line);
+}
+
+.level-item:focus-visible {
+  outline: none;
+  box-shadow: var(--eq-focus);
+}
+
+.level-item.locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.level-item.locked:hover {
+  transform: none;
+  box-shadow: var(--eq-shadow);
+  border-color: var(--eq-border);
+}
+
+.level-item.active {
+  border-color: var(--eq-primary);
+  box-shadow: var(--eq-focus);
+}
+
+.level-badge {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 15px;
+  color: #fff;
+  background: var(--eq-gradient);
+  flex-shrink: 0;
+}
+
+.level-badge.done {
+  background: linear-gradient(135deg, #22c55e, var(--eq-success));
+}
+
+.level-badge.lock {
+  background: var(--eq-line);
+}
+
+.level-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.level-name {
+  font-size: 14.5px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+.stars {
+  color: var(--eq-gold);
+  font-size: 13px;
+  letter-spacing: 2px;
+}
+
+/* ============================================================
+   六、答题
+   ============================================================ */
+.quiz-wrap {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 24px 32px 40px;
+}
+
+.quiz-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.quiz-bar-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--eq-text-sub);
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: none;
+  padding: 5px 10px;
+  border-radius: var(--eq-radius-sm);
+  transition: color var(--eq-dur) var(--eq-ease),
+    background var(--eq-dur) var(--eq-ease),
+    border-color var(--eq-dur) var(--eq-ease);
+}
+.quiz-bar-back:hover {
+  background: var(--eq-surface);
+  border-color: var(--eq-border-soft);
+  color: var(--eq-accent);
+}
+.quiz-bar-back:active {
+  transform: translateY(1px);
+}
+
+.quiz-bar-title {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.quiz-bar-count {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--eq-text-sub);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 顶部进度：整条走完即交卷，只做状态指示不做装饰 */
+.quiz-progress {
+  height: 4px;
+  background: var(--eq-border-soft);
+  border-radius: var(--eq-radius-pill);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.quiz-progress-inner {
+  height: 100%;
+  background: var(--eq-primary);
+  transition: width var(--eq-dur) var(--eq-ease);
+}
+
+.quiz-type-tag {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--eq-accent);
+  background: var(--eq-primary-soft);
+  border-radius: var(--eq-radius-xs);
+  padding: 3px 9px;
+  margin-bottom: 14px;
+}
+
+/* 题面：单词本身是这一屏的主角，给它独占的视觉重量 */
+.quiz-stem {
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.025em;
+  margin: 0 0 6px;
+}
+
+.quiz-hint {
+  font-size: 12.5px;
+  color: var(--eq-text-mute);
+  margin-bottom: 18px;
+}
+
+.quiz-hint .kbd-inline {
+  margin: 0 3px;
+}
+
+/*
+ * 选项行：左侧键位徽标 + 选项文字。
+ * 键位徽标做成键帽（下沿多一道边）而非纯方块，
+ * 让「可以按键盘」这件事在视觉上先说一遍。
+ */
+.option {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 15px 16px;
+  border: 1px solid var(--eq-border);
+  border-radius: var(--eq-radius);
+  margin-bottom: 10px;
+  background: var(--eq-surface);
+  font-size: 15px;
+  cursor: pointer;
+  transition: border-color var(--eq-dur) var(--eq-ease),
+    background var(--eq-dur) var(--eq-ease),
+    box-shadow var(--eq-dur) var(--eq-ease);
+}
+
+.option:hover {
+  border-color: var(--eq-line);
+  background: var(--eq-surface-sunken);
+}
+
+.option.selected {
+  border-color: var(--eq-primary);
+  background: var(--eq-primary-soft);
+  box-shadow: var(--eq-glow);
+}
+
+.option.correct {
+  border-color: var(--eq-success-line);
+  background: var(--eq-success-bg);
+}
+
+.option.wrong {
+  border-color: var(--eq-danger-line);
+  background: var(--eq-danger-bg);
+}
+
+.option-key {
+  width: 27px;
+  height: 27px;
+  border-radius: var(--eq-radius-xs);
+  background: var(--eq-surface);
+  border: 1px solid var(--eq-line);
+  box-shadow: 0 2px 0 var(--eq-line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--eq-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--eq-text-sub);
+  flex-shrink: 0;
+  transition: background var(--eq-dur) var(--eq-ease),
+    color var(--eq-dur) var(--eq-ease),
+    border-color var(--eq-dur) var(--eq-ease),
+    box-shadow var(--eq-dur) var(--eq-ease);
+}
+
+.option:hover .option-key {
+  border-color: var(--eq-primary-line);
+  color: var(--eq-accent);
+}
+
+.option.selected .option-key,
+.option.correct .option-key,
+.option.wrong .option-key {
+  color: #fff;
+  box-shadow: none;
+}
+
+.option.selected .option-key {
+  background: var(--eq-primary);
+  border-color: var(--eq-primary-dark);
+}
+
+.option.correct .option-key {
+  background: var(--eq-success);
+  border-color: var(--eq-success);
+}
+
+.option.wrong .option-key {
+  background: var(--eq-danger);
+  border-color: var(--eq-danger);
+}
+
+/* 拼写输入区 —— 打字机质感 */
+.spell-box {
+  margin-top: 4px;
+}
+
+.spell-input .el-input__wrapper {
+  font-family: var(--eq-mono);
+  font-size: 24px;
+  letter-spacing: 3px;
+  padding: 16px 20px;
+  border-radius: var(--eq-radius);
+  box-shadow: 0 0 0 1px var(--eq-border) inset;
+  transition: box-shadow var(--eq-dur) var(--eq-ease);
+}
+
+.spell-input .el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px var(--eq-primary) inset, var(--eq-glow);
+}
+
+.spell-input .el-input__inner {
+  height: 34px;
+}
+
+.spell-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--eq-text-sub);
+}
+
+.spell-meta b {
+  color: var(--eq-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 结算 */
+.result-card {
+  text-align: center;
+  padding: 34px 26px;
+}
+
+.result-emoji {
+  font-size: 52px;
+  line-height: 1;
+}
+
+.result-score {
+  font-size: 52px;
+  font-weight: 600;
+  color: var(--eq-accent);
+  margin: 10px 0 6px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.result-score span {
+  font-size: 17px;
+  color: var(--eq-text-sub);
+  margin-left: 5px;
+  font-weight: 500;
+}
+
+.result-line {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 14px 0 22px;
+}
+
+/* 关卡达标后提示"已解锁下一关"（听力、词汇、语法共用） */
+.result-unlock {
+  margin: -10px 0 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--eq-success);
+}
+
+.result-stats {
+  display: flex;
+  justify-content: space-around;
+  padding-top: 20px;
+  border-top: 1px solid var(--eq-border-soft);
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.result-stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.result-stats b {
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.result-stats span {
+  font-size: 12px;
+  color: var(--eq-text-mute);
+}
+
+.wrong-item {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--eq-border-soft);
+}
+.wrong-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.wrong-stem {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.wrong-line {
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.wrong-line .bad {
+  color: var(--eq-danger);
+  font-family: var(--eq-mono);
+}
+.wrong-line .good {
+  color: var(--eq-success);
+  font-weight: 600;
+  font-family: var(--eq-mono);
+}
+
+.wrong-analysis {
+  font-size: 12.5px;
+  color: var(--eq-text-sub);
+  background: var(--eq-surface-sunken);
+  border-radius: var(--eq-radius-sm);
+  padding: 9px 12px;
+  margin-top: 7px;
+  line-height: 1.65;
+}
+
+/*
+ * 针对「学生所选错项」的讲解。
+ * 视觉上必须与下面的通用解析拉开层次：左侧强调色竖条 + 淡强调底，
+ * 让学生一眼看出"这段是专门讲我这种错法的"，而不是又一坨通用解析。
+ */
+.explain-box {
+  margin-top: 9px;
+  padding: 9px 12px;
+  border-left: 3px solid var(--eq-accent);
+  background: var(--eq-primary-soft);
+  border-radius: var(--eq-radius-sm);
+}
+
+.explain-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.explain-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--eq-accent);
+}
+
+.explain-tag {
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 999px;
+  color: var(--eq-text-mute);
+  background: var(--eq-surface);
+  border: 1px solid var(--eq-border);
+}
+
+.explain-body {
+  font-size: 12.5px;
+  color: var(--eq-text);
+  line-height: 1.7;
+}
+
+/* 加载中与降级提示都用次要色，避免它们抢走讲解正文的注意力 */
+.explain-loading,
+.explain-fallback {
+  font-size: 12.5px;
+  color: var(--eq-text-mute);
+  line-height: 1.7;
+}
+
+/* ============================================================
+   七、按钮
+   ============================================================ */
+.el-button.btn-primary,
+.el-button.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 132px;
+  border-radius: var(--eq-radius-sm);
+  padding: 11px 22px;
+  font-size: 14.5px;
+  font-weight: 600;
+  height: auto;
+  transition: background var(--eq-dur) var(--eq-ease),
+    border-color var(--eq-dur) var(--eq-ease),
+    box-shadow var(--eq-dur) var(--eq-ease),
+    transform 90ms var(--eq-ease);
+}
+
+/* 主按钮：纯色，不用渐变；阴影带强调色相而非纯黑 */
+.el-button.btn-primary {
+  background: var(--eq-primary);
+  border: none;
+  color: #fff;
+  box-shadow: 0 1px 2px var(--eq-btn-shadow);
+}
+
+.el-button.btn-primary:hover:not(.is-disabled) {
+  background: var(--eq-primary-dark);
+  box-shadow: 0 4px 12px var(--eq-btn-shadow-hover);
+}
+
+/* 按下时的物理回馈 —— taste-skill §4.5 */
+.el-button.btn-primary:active:not(.is-disabled),
+.el-button.btn-ghost:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.el-button.btn-primary.is-disabled {
+  background: var(--eq-line);
+  box-shadow: none;
+  color: #fff;
+}
+
+.el-button.btn-ghost {
+  background: var(--eq-surface);
+  color: var(--eq-accent);
+  border: 1.5px solid var(--eq-line);
+}
+
+.el-button.btn-ghost:hover {
+  border-color: var(--eq-primary);
+  background: var(--eq-primary-soft);
+  color: var(--eq-accent);
+}
+
+.btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ============================================================
+   八、徽章 / 排行榜
+   ============================================================ */
+/* 徽章改为方形微圆角：taste-skill §4.5 指出药丸徽章是 AI 默认手法 */
+.chip {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: var(--eq-radius-xs);
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--eq-primary-soft);
+  color: var(--eq-accent);
+}
+
+.chip.green {
+  background: var(--eq-success-bg);
+  color: var(--eq-success);
+}
+
+.chip.gold {
+  background: var(--eq-warning-bg);
+  color: var(--eq-warning);
+}
+
+.chip.gray {
+  background: var(--eq-border-soft);
+  color: var(--eq-text-sub);
+}
+
+.rank-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 11px 14px;
+  border-radius: var(--eq-radius-sm);
+  margin-bottom: 8px;
+  background: var(--eq-surface);
+  border: 1px solid var(--eq-border);
+}
+
+.rank-row.me {
+  background: var(--eq-primary-soft);
+  border-color: var(--eq-primary-line);
+}
+
+.rank-no {
+  width: 28px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--eq-text-sub);
+  font-variant-numeric: tabular-nums;
+}
+
+.rank-no.top1 {
+  color: var(--eq-warning);
+}
+.rank-no.top2 {
+  color: #a6adbb;
+}
+.rank-no.top3 {
+  color: var(--eq-warning);
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--eq-gradient);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   九、快捷键帮助面板
+   ============================================================ */
+.shortcut-mask {
+  position: fixed;
+  inset: 0;
+  background: var(--eq-mask);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 24px;
+}
+
+.shortcut-panel {
+  background: var(--eq-surface);
+  border-radius: 14px;
+  box-shadow: var(--eq-shadow-lg);
+  width: 100%;
+  max-width: 560px;
+  max-height: 76vh;
+  overflow-y: auto;
+  padding: 24px 26px;
+}
+
+.shortcut-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.shortcut-head h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.shortcut-group {
+  font-size: 11px;
+  color: var(--eq-text-mute);
+  letter-spacing: 0.6px;
+  margin: 18px 0 8px;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--eq-border-soft);
+  font-size: 13.5px;
+}
+
+.shortcut-row:last-child {
+  border-bottom: none;
+}
+
+.shortcut-keys {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   十、管理后台
+   ============================================================ */
+.admin-layout {
+  min-height: 100vh;
+  background: var(--eq-bg);
+}
+
+.admin-header {
+  background: var(--eq-surface);
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--eq-border);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.admin-body {
+  padding: 22px 28px 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: var(--eq-surface);
+  border: 1px solid var(--eq-border);
+  border-radius: var(--eq-radius);
+  padding: 16px 18px;
+  box-shadow: var(--eq-shadow);
+}
+
+.stat-card b {
+  font-size: 24px;
+  display: block;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   十一、响应式回退（窗口收窄时侧边栏只留图标）
+   ============================================================ */
+@media (max-width: 1024px) {
+  .grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .desktop-shell {
+    grid-template-columns: 62px minmax(0, 1fr);
+  }
+  .side-nav {
+    padding: 18px 8px 14px;
+  }
+  .side-brand {
+    justify-content: center;
+    padding: 0 0 14px;
+  }
+  .side-brand-text,
+  .side-group-label,
+  .side-item .txt,
+  .side-user-text {
+    display: none;
+  }
+  .side-item {
+    justify-content: center;
+    padding: 10px 0;
+  }
+  .side-item .ico {
+    font-size: 17px;
+  }
+  .side-user {
+    justify-content: center;
+    padding: 6px 0;
+  }
+  .main-area {
+    padding: 20px 18px 40px;
+  }
+  .quiz-wrap {
+    padding: 20px 18px 36px;
+  }
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .level-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .keybar-hint .keybar-tip {
+    display: none;
+  }
+}
+
+/* ============================================================
+   十二、深色主题（Dark Theme）
+   ------------------------------------------------------------
+   换肤方式：把 data-theme 挂到 <html> 上（见 src/store/theme.js），
+   这里只覆盖变量值，组件样式一行都不用改。
+
+   为什么不用 element-plus 官方的 dark/css-vars.css：
+   本项目已经用 `:root { --el-color-primary: … }` 接管了 EP 主题，
+   而官方深色包的 `html.dark` 选择器特异性更高，会反过来把我们
+   的紫靛强调色冲掉，变成 EP 默认蓝。所以 EP 的深色变量也在这里
+   自己映射一遍，保持"强调色只有一个来源"。
+
+   深色不是把浅色反相，三条硬规则：
+     1. 层级靠**明度差**，不靠描边：侧栏最暗 < 页底 < 卡片 < 悬浮控件
+     2. 强调色的"文字形态"必须变亮（见 --eq-accent），
+        而"填充形态"仍要够深以压住白字 —— 两个角色分开成两个 token
+     3. 阴影改用纯黑大透明度：深色页上带色相的阴影完全看不出来
+   ============================================================ */
+[data-theme='dark'] {
+  /* ---------- 中性色：冷调蓝灰（与光主题同一色相族，只是整体压暗） ---------- */
+  --eq-bg: #0d1016;
+  --eq-bg-deep: #090b10;
+  --eq-surface: #161b23;
+  --eq-surface-sunken: #1c222c;
+  --eq-side: #12161d;
+  --eq-side-2: #181d26;
+  --eq-side-3: #222833;
+  --eq-side-text: #98a2b3;
+  --eq-side-hover: rgba(255, 255, 255, 0.07);
+
+  /* 侧栏：深色下回到原来的深底板（层级最暗，靠一道发丝线与内容区分开） */
+  --eq-sidebar-bg: #12161d;
+  --eq-sidebar-text: #98a2b3;
+  --eq-sidebar-strong: #ffffff;
+  --eq-sidebar-hover: rgba(255, 255, 255, 0.07);
+  --eq-sidebar-line: rgba(255, 255, 255, 0.06);
+  --eq-sidebar-label: #646b80;
+  --eq-sidebar-active-bg: rgba(129, 140, 248, 0.18);
+  --eq-sidebar-scroll: rgba(255, 255, 255, 0.16);
+
+  /* 首页横幅：深色下保持原来的深炭底板 + 白字 + 较强的同色相光晕 */
+  --eq-hero-bg: #12161d;
+  --eq-hero-border: transparent;
+  --eq-hero-text: #ffffff;
+  --eq-hero-sub: #98a2b3;
+  --eq-hero-line: rgba(255, 255, 255, 0.12);
+  --eq-hero-track: rgba(255, 255, 255, 0.14);
+  --eq-hero-glow-a: rgba(79, 70, 229, 0.42);
+  --eq-hero-glow-b: rgba(148, 163, 184, 0.14);
+  --eq-text: #e7ebf2;
+  --eq-text-sub: #a5aebd;
+  --eq-text-mute: #7c8698;
+  --eq-border: #2a3341;
+  --eq-border-soft: #222933;
+  --eq-line: #39424f;
+
+  /* ---------- 强调色 ----------
+     primary 系列仍是"填充/描边"用的色值，白字在上面对比度 6.29:1。
+     hover 略微提亮而不是压暗 —— 深色底上"变暗"会显得按钮在下沉。 */
+  --eq-primary-deep: #4338ca;
+  --eq-primary-dark: #5b52e8;
+  --eq-primary: #4f46e5;
+  --eq-primary-bright: #818cf8;
+  --eq-primary-soft: rgba(129, 140, 248, 0.14);
+  --eq-primary-line: rgba(129, 140, 248, 0.3);
+  --eq-gradient: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+
+  /* 文字形态的强调色必须变亮，否则 #4338ca 落在 #161b23 上只有 2.8:1 */
+  --eq-accent: #a5b4fc;
+
+  /* ---------- 语义色：整体提亮以适应深底（教学反馈必须一眼可读） ---------- */
+  --eq-success: #4cc38a;
+  --eq-success-bg: rgba(76, 195, 138, 0.12);
+  --eq-success-line: rgba(76, 195, 138, 0.32);
+  --eq-danger: #ef6b6b;
+  --eq-danger-bg: rgba(239, 107, 107, 0.12);
+  --eq-danger-line: rgba(239, 107, 107, 0.32);
+  --eq-warning: #e0b341;
+  --eq-warning-bg: rgba(224, 179, 65, 0.12);
+  --eq-warning-line: rgba(224, 179, 65, 0.32);
+  --eq-gold: #e0b341;
+
+  /* ---------- 阴影：深色底上带色相的阴影等于没有阴影 ---------- */
+  --eq-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 1px rgba(0, 0, 0, 0.3);
+  --eq-shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.35);
+  --eq-shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
+  --eq-glow: 0 0 0 3px rgba(129, 140, 248, 0.22);
+  --eq-focus: 0 0 0 3px rgba(129, 140, 248, 0.42);
+
+  /* ---------- 底纹 ---------- */
+  --eq-bg-glow: rgba(99, 102, 241, 0.1);
+  --eq-bg-glow-2: rgba(148, 163, 184, 0.05);
+  --eq-bg-grid: rgba(255, 255, 255, 0.022);
+  --eq-mask: rgba(0, 0, 0, 0.62);
+  --eq-btn-shadow: rgba(0, 0, 0, 0.5);
+  --eq-btn-shadow-hover: rgba(79, 70, 229, 0.4);
+
+  /* ---------- 热力图色带 ----------
+     方向与浅色相反：深色主题里**越亮 = 越活跃**。
+     相邻档亮度比 1.51-1.66x，末档 #7470ef 是色带里最亮的一格。
+     空档特意比最浅档再暗一点，否则"有活动"和"没活动"分不开。 */
+  --eq-heat-0: #232a36;
+  --eq-heat-1: #2e3357;
+  --eq-heat-2: #3d3f7d;
+  --eq-heat-3: #4d4aa8;
+  --eq-heat-4: #5f57d4;
+  --eq-heat-5: #7470ef;
+  --eq-heat-empty: #1a1f27;
+
+  --eq-area-from: rgba(129, 140, 248, 0.34);
+  --eq-area-to: rgba(129, 140, 248, 0.02);
+
+  --eq-hint-tick: #4f586a;
+  --eq-hint-tick-active: #7c86a6;
+  --eq-code-bg: rgba(255, 255, 255, 0.09);
+  --eq-invert-bg: rgba(255, 255, 255, 0.12);
+  --eq-invert-border: rgba(255, 255, 255, 0.18);
+  --eq-strike: rgba(239, 107, 107, 0.6);
+  --eq-strike-soft: rgba(239, 107, 107, 0.55);
+}
+
+/* ---------- 深色主题下的 Element Plus 变量映射 ----------
+   EP 的 light-3 / light-5 … light-9 是"由深到浅"的强调色阶梯，
+   浅色主题里 light-9 接近白色（用作 plain 按钮的悬停底）。
+   深色主题里必须反过来变成"深色底上的暗靛色块"，
+   否则按钮 hover 会突然闪出一块白底。 */
+[data-theme='dark'] {
+  --el-color-primary: #4f46e5;
+  --el-color-primary-light-3: #6a63e8;
+  --el-color-primary-light-5: #4a45a0;
+  --el-color-primary-light-7: #2d3358;
+  --el-color-primary-light-8: #252a49;
+  --el-color-primary-light-9: #1e2138;
+  --el-color-primary-dark-2: #6366f1;
+
+  --el-bg-color: var(--eq-surface);
+  --el-bg-color-page: var(--eq-bg);
+  --el-bg-color-overlay: var(--eq-surface);
+
+  --el-text-color-primary: var(--eq-text);
+  --el-text-color-regular: var(--eq-text-sub);
+  --el-text-color-secondary: var(--eq-text-mute);
+  --el-text-color-placeholder: var(--eq-text-mute);
+  --el-text-color-disabled: #5c6575;
+
+  --el-border-color: var(--eq-border);
+  --el-border-color-light: var(--eq-border-soft);
+  --el-border-color-lighter: var(--eq-border-soft);
+  --el-border-color-extra-light: var(--eq-border-soft);
+  --el-border-color-dark: var(--eq-line);
+  --el-border-color-darker: var(--eq-line);
+  --el-border-color-hover: var(--eq-line);
+
+  --el-fill-color: var(--eq-surface-sunken);
+  --el-fill-color-light: var(--eq-surface-sunken);
+  --el-fill-color-lighter: #1a1f28;
+  --el-fill-color-extra-light: var(--eq-surface);
+  --el-fill-color-dark: #232a36;
+  --el-fill-color-darker: #2a3341;
+  --el-fill-color-blank: var(--eq-surface);
+
+  --el-disabled-bg-color: var(--eq-surface-sunken);
+  --el-disabled-text-color: #5c6575;
+  --el-disabled-border-color: var(--eq-border);
+
+  --el-mask-color: rgba(0, 0, 0, 0.6);
+  --el-mask-color-extra-light: rgba(0, 0, 0, 0.3);
+  --el-overlay-color: rgba(0, 0, 0, 0.72);
+  --el-overlay-color-light: rgba(0, 0, 0, 0.6);
+  --el-overlay-color-lighter: rgba(0, 0, 0, 0.5);
+
+  --el-box-shadow: var(--eq-shadow-md);
+  --el-box-shadow-light: var(--eq-shadow);
+  --el-box-shadow-lighter: var(--eq-shadow);
+  --el-box-shadow-dark: var(--eq-shadow-lg);
+
+  /*
+   * 语义色的浅色阶梯。
+   * EP 里 --el-color-<type>-light-9 是"最浅的着色底"，被 el-tag / el-alert /
+   * plain 按钮广泛用作背景。浅色主题下它接近白色；深色主题下如果不动，
+   * 每一个 tag 都会变成一块白斑（后台的"学生""Day 28"标签就是这么露的）。
+   * 这里按各语义色相给出一套深色调阶梯，一次修好所有引用它的组件。
+   */
+  --el-color-info: #9aa3b2;
+  --el-color-info-light-3: #6b7484;
+  --el-color-info-light-5: #454e5e;
+  --el-color-info-light-7: #2e3542;
+  --el-color-info-light-8: #262c37;
+  --el-color-info-light-9: #1f242d;
+  --el-color-info-dark-2: #a3aab8;
+
+  --el-color-success-light-3: #6b9d84;
+  --el-color-success-light-5: #2f6b4c;
+  --el-color-success-light-7: #224533;
+  --el-color-success-light-8: #1b3628;
+  --el-color-success-light-9: #16281f;
+  --el-color-success-dark-2: #6bd39f;
+
+  --el-color-danger-light-3: #b06b6e;
+  --el-color-danger-light-5: #7a4448;
+  --el-color-danger-light-7: #462a2e;
+  --el-color-danger-light-8: #382225;
+  --el-color-danger-light-9: #2a1c1e;
+  --el-color-danger-dark-2: #f38b8b;
+
+  --el-color-warning-light-3: #b0945c;
+  --el-color-warning-light-5: #7a6636;
+  --el-color-warning-light-7: #463a26;
+  --el-color-warning-light-8: #382f1e;
+  --el-color-warning-light-9: #2a2418;
+  --el-color-warning-dark-2: #e6c46a;
+}
+
+/* ---------- 深色主题的零星结构补丁 ---------- */
+
+/*
+ * Element Plus 的禁用态按钮。
+ * EP 把 --el-button-disabled-* 定义在 .el-button--info 这类**按钮元素自身**上，
+ * 所以只在 :root 层覆盖是不生效的（元素上的定义会赢过继承值），
+ * 必须直接命中按钮类。不改的话深色页上会出现一块 #c8c9cc 的亮灰方块，
+ * 在"已打卡 / 已领取"这类已经完成的操作上特别显眼。
+ */
+[data-theme='dark'] .el-button.is-disabled,
+[data-theme='dark'] .el-button.is-disabled:hover {
+  --el-button-disabled-bg-color: var(--eq-surface-sunken);
+  --el-button-disabled-border-color: var(--eq-border);
+  --el-button-disabled-text-color: var(--eq-text-mute);
+}
+
+/* 侧栏的发丝线 / 当前页底色 / 悬停底色原先在这里逐条覆盖，
+   现在都收敛成 --eq-sidebar-* 一组 token（见 :root 与上方深色变量块），
+   浅深两套值各自定义一次，规则本身不再需要主题分支。 */
+
+/* 表单控件走系统深色渲染（下拉、日期选择的原生部分） */
+[data-theme='dark'] input,
+[data-theme='dark'] textarea {
+  color-scheme: dark;
+}
+
+/* 深色下的滚动条：默认会是惨白的一条，非常出戏 */
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+}
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+/* ============================================================
+   十三、账号菜单（侧边栏头像弹出面板）
+   ------------------------------------------------------------
+   面板由 el-popover 渲染并被 teleport 到 body，
+   **不在 SideNav 的组件 DOM 里**，所以这段样式必须写在全局样式表里，
+   写在组件的 <style scoped> 中不会生效。
+   ============================================================ */
+/*
+ * 用 `.el-popover.user-menu-popper` 双类名是为了压过 EP 自带的
+ * `.el-popover.el-popper`（同为 0,2,0 特异性），靠加载顺序取胜 ——
+ * main.js 里 element-plus 的样式先于 global.css 引入。
+ * 这样就不需要 !important。
+ */
+.el-popover.user-menu-popper {
+  padding: 6px;
+  border-radius: var(--eq-radius);
+  border: 1px solid var(--eq-border);
+  box-shadow: var(--eq-shadow-lg);
+  background: var(--eq-surface);
+}
+
+.user-menu-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 12px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--eq-border-soft);
+}
+
+.user-menu-id {
+  min-width: 0;
+}
+.user-menu-id b {
+  display: block;
+  font-size: 14px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.user-menu-id span {
+  display: block;
+  font-size: 11.5px;
+  color: var(--eq-text-mute);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--eq-radius-sm);
+  background: none;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--eq-text);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--eq-dur) var(--eq-ease),
+    color var(--eq-dur) var(--eq-ease);
+}
+
+.user-menu-row:hover {
+  background: var(--eq-surface-sunken);
+}
+
+.user-menu-row:focus-visible {
+  outline: none;
+  box-shadow: var(--eq-focus);
+}
+
+.user-menu-row .umi {
+  flex-shrink: 0;
+  width: 18px;
+  font-size: 15px;
+  line-height: 1;
+  text-align: center;
+}
+
+.user-menu-row.danger {
+  color: var(--eq-danger);
+}
+.user-menu-row.danger:hover {
+  background: var(--eq-danger-bg);
+}
+
+.user-menu-group {
+  font-size: 11px;
+  color: var(--eq-text-mute);
+  letter-spacing: 0.6px;
+  padding: 12px 10px 6px;
+}
+
+.user-menu-sep {
+  height: 1px;
+  margin: 6px 0;
+  background: var(--eq-border-soft);
+}
+
+/*
+ * 主题三态分段控件（跟随系统 / 浅色 / 深色）。
+ * 用分段控件而不是开关：开关只能表达两个状态，
+ * "跟随系统"和"当前恰好是深色"是两回事，必须有独立的第三态。
+ */
+.theme-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 10px 10px;
+  font-size: 13.5px;
+}
+
+.theme-seg {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--eq-border-soft);
+  border-radius: var(--eq-radius-sm);
+  background: var(--eq-surface-sunken);
+  flex-shrink: 0;
+}
+
+.theme-opt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 26px;
+  border: none;
+  border-radius: var(--eq-radius-xs);
+  background: none;
+  color: var(--eq-text-mute);
+  font-size: 15px;
+  cursor: pointer;
+  transition: background var(--eq-dur) var(--eq-ease),
+    color var(--eq-dur) var(--eq-ease);
+}
+
+.theme-opt:hover {
+  color: var(--eq-text);
+}
+
+.theme-opt.on {
+  background: var(--eq-surface);
+  color: var(--eq-accent);
+  box-shadow: var(--eq-shadow);
+}
+
+.theme-opt:focus-visible {
+  outline: none;
+  box-shadow: var(--eq-focus);
+}
+
+/* ============================================================
+   十四、首页等级说明卡片（el-tooltip 内容）
+   ------------------------------------------------------------
+   和上面的账号菜单同一个道理：tooltip 的内容被 teleport 到 body，
+   不在 Home.vue 的组件 DOM 里，所以样式只能写在全局表。
+   用 `.el-popper.level-tip-popper` 双类名压过 EP 自带的
+   `.el-popper.is-light`（同为 0,2,0），靠加载顺序取胜（global.css 在后）。
+   ============================================================ */
+.el-popper.level-tip-popper {
+  padding: 0;
+  background: var(--eq-surface);
+  border: 1px solid var(--eq-border);
+  border-radius: var(--eq-radius-sm);
+  box-shadow: var(--eq-shadow-md);
+  color: var(--eq-text);
+}
+
+.el-popper.level-tip-popper .el-popper__arrow::before {
+  background: var(--eq-surface);
+  border-color: var(--eq-border);
+}
+
+.level-tip {
+  padding: 11px 13px;
+  min-width: 178px;
+}
+
+.level-tip-head {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: var(--eq-text-mute);
+  margin-bottom: 7px;
+  white-space: nowrap;
+}
+
+.level-tip-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 3px 0;
+  font-size: 12.5px;
+  color: var(--eq-text-sub);
+  white-space: nowrap;
+}
+
+.level-tip-row b {
+  font-weight: 600;
+  color: var(--eq-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 当前等级高亮：一眼能看出"我在哪一级、还差多少" */
+.level-tip-row.current,
+.level-tip-row.current b {
+  color: var(--eq-accent);
+  font-weight: 700;
+}

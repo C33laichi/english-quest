@@ -1,7 +1,0 @@
-# 后端
-cd D:/WorkBuddy/WorkPlace/english-quest/backend
-java -jar target/english-quest.jar
-
-# 前端
-cd D:/WorkBuddy/WorkPlace/english-quest/frontend 
-npm run dev

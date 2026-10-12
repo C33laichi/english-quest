@@ -72,3 +72,4 @@ screenshots/diag-*.png
 _sanitized/
 _local_backup/
 _apply_sanitized.py
+_push_safe.py

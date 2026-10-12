@@ -7,7 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 /**
  * 基于游戏化机制的专升本英语闯关学习系统 —— 启动类
  *
- * @author 陈畅
+ * @author cc
  */
 @SpringBootApplication
 @MapperScan("com.cc.englishquest.mapper")

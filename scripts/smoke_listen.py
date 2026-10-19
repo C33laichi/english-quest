@@ -23,11 +23,19 @@ import sys
 import urllib.error
 import urllib.request
 
+import eq_util as U
+
 BASE = "http://127.0.0.1:8090/api"
-MYSQL = r"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
+MYSQL = U.MYSQL
 
 passed = 0
 failed = 0
+
+# 重定向到文件时 Python 默认全缓冲，跑几分钟都不出字，很容易误判成卡死
+try:
+    sys.stdout.reconfigure(line_buffering=True)
+except Exception:
+    pass
 
 # 本机设置了 http_proxy，本地请求必须绕开，否则会得到假 502
 opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
@@ -61,9 +69,14 @@ def call(method, path, token=None, body=None):
 
 
 def sql(query):
+    """查库：连接参数统一走 eq_util。
+
+    这里原先是裸的 `-p`，mysql 见不到密码值就会**交互式要密码** ——
+    在脚本/CI 里没有终端，直接挂死（本机实测 8 分钟零输出）。
+    顺带补上 `-h ::1`：本机 127.0.0.1:3306 被 VMware NAT 转发占着，直连报 2013。
+    """
     out = subprocess.run(
-        [MYSQL, "-uroot", "-p", "english_quest",
-         "--default-character-set=utf8mb4", "-N", "-B", "-e", query],
+        [MYSQL] + U.DB_ARGS + ["-e", query],
         capture_output=True, text=True, encoding="utf-8")
     rows = []
     for line in out.stdout.splitlines():

@@ -185,7 +185,7 @@ async function load() {
 onMounted(async () => {
   setHints([
     { keys: ['1', '9'], label: '快速开始简单模式' },
-    { keys: ['?'], label: '全部快捷键' }
+    { keys: ['Shift', '?'], label: '全部快捷键' }
   ])
   await load()
   setStatus(`${levels.value.length} 个关卡 · 已解锁 ${unlockedCount.value} · ${totalBank.value} 句语料`)

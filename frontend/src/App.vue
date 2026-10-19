@@ -10,7 +10,8 @@
       </main>
     </div>
 
-    <KeyBar />
+    <!-- 有侧栏时键位条只铺内容区，左侧整列让给侧边栏（侧栏要一直占满到屏幕底部） -->
+    <KeyBar :class="{ 'keybar--shell': hasShell }" />
     <ShortcutHelp v-if="helpVisible" @close="helpVisible = false" />
   </template>
 </template>
@@ -32,15 +33,20 @@ const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 const hasShell = computed(() => route.meta.shell === true)
 
 /**
- * 全局快捷键：? 打开快捷键面板，Esc 关闭。
+ * 全局快捷键：Shift+? 打开快捷键面板，Esc 关闭。
  * 用捕获阶段监听，面板打开时按 Esc 可以直接拦下事件，
  * 避免底下的页面（比如答题页）同时再响应一次 Esc。
  */
+const toggleHelp = () => {
+  helpVisible.value = !helpVisible.value
+}
+
 useHotkey(
   {
-    '?': () => {
-      helpVisible.value = !helpVisible.value
-    },
+    '?': toggleHelp,
+    // 中文输入法 / 全角状态下 Shift+/ 可能产出全角问号，一并接管，
+    // 否则用户按了没反应却以为快捷键坏了。
+    '？': toggleHelp,
     Escape: (e) => {
       if (!helpVisible.value) return false
       helpVisible.value = false

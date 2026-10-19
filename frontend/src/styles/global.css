@@ -491,12 +491,15 @@ html {
   display: grid;
   grid-template-columns: var(--eq-side-w) minmax(0, 1fr);
   min-height: 100vh;
-  padding-bottom: var(--eq-keybar-h);
+  /* 注意：底部留白不放在这里。放在容器上会把侧栏一起推高，
+     导致侧栏到不了屏幕最底部（键位条会横穿侧栏下方）。
+     改为只给 .main-area 加底部内边距，侧栏才能 100vh 顶到最底。 */
 }
 
 .main-area {
   min-width: 0;
-  padding: 26px 32px 48px;
+  /* 底部留出键位条的高度，否则页面最下面一段内容会被固定条盖住 */
+  padding: 26px 32px calc(48px + var(--eq-keybar-h));
 }
 
 .main-inner {
@@ -519,7 +522,8 @@ html {
 .side-nav {
   position: sticky;
   top: 0;
-  height: calc(100vh - var(--eq-keybar-h));
+  /* 占满整个视口高度：键位条已经挪到右侧内容区，不再需要给它让位 */
+  height: 100vh;
   background: var(--eq-sidebar-bg);
   color: var(--eq-sidebar-text);
   /* 浅色主题下侧栏是白底，和白底内容区之间必须有一道发丝线，
@@ -756,6 +760,12 @@ html {
   color: var(--eq-text-sub);
   z-index: 900;
   overflow: hidden;
+}
+
+/* 带左侧导航的页面：键位条只铺右侧内容区，左侧整列留给侧边栏
+   （无壳页面如登录 / 答题页没有侧栏，仍保持通栏） */
+.keybar--shell {
+  left: var(--eq-side-w);
 }
 
 .keybar-hint {
@@ -1311,6 +1321,26 @@ kbd {
   color: var(--eq-success);
 }
 
+/* 最后一关也通关了：用一句收尾文案替代「下一关」按钮（词汇、听力共用） */
+.all-cleared {
+  margin: -6px 0 20px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--eq-accent);
+}
+
+.all-cleared i {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--eq-text-mute);
+}
+
 .result-stats {
   display: flex;
   justify-content: space-around;
@@ -1723,7 +1753,11 @@ kbd {
     padding: 6px 0;
   }
   .main-area {
-    padding: 20px 18px 40px;
+    padding: 20px 18px calc(40px + var(--eq-keybar-h));
+  }
+  /* 窄屏侧栏收成 62px 图标条，键位条起点要跟着挪 */
+  .keybar--shell {
+    left: 62px;
   }
   .quiz-wrap {
     padding: 20px 18px 36px;

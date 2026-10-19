@@ -164,7 +164,7 @@
             <span v-if="result.newRecord" class="chip gold">新纪录</span>
           </div>
           <div v-if="result.unlockNext" class="result-unlock">
-            🔓 已解锁下一关，返回关卡列表继续挑战
+            🔓 已解锁下一关
           </div>
           <div class="result-stats">
             <div><b>{{ result.correctCount }}/{{ result.totalCount }}</b><span>完整听对</span></div>
@@ -217,8 +217,17 @@
           </div>
         </div>
 
+        <!-- 通过后：非最后一关给「下一关」；最后一关不出现该按钮，改用收尾文案 -->
+        <div v-if="allCleared" class="all-cleared">
+          Congratulations！You cleared the level.
+          <i>你已通关全部 {{ levels.length }} 个听力关卡</i>
+        </div>
+
         <div class="btn-row">
-          <el-button class="btn-primary" @click="goBack">返回关卡</el-button>
+          <el-button v-if="showNext" class="btn-primary" @click="goNext">
+            下一关 · {{ nextLevel.name }} <span class="btn-key">n</span>
+          </el-button>
+          <el-button :class="showNext ? 'btn-ghost' : 'btn-primary'" @click="goBack">返回关卡</el-button>
           <el-button class="btn-ghost" @click="retryAll">再来一次 <span class="btn-key">r</span></el-button>
         </div>
       </template>
@@ -227,6 +236,15 @@
         <span class="icon">🎧</span>本关暂无听力语料
       </div>
     </div>
+
+    <!-- 最后一关通关：弹窗庆祝（中间关有「下一关」，不打断节奏） -->
+    <LevelClearedDialog
+      v-model="celebrateVisible"
+      kind="听力"
+      :level-count="levels.length"
+      @back="goBack"
+      @retry="retryAll"
+    />
   </div>
 </template>
 
@@ -237,6 +255,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { listenApi, aiApi } from '@/api'
 import { useHotkey } from '@/composables/useHotkey'
 import { useKeyHints } from '@/composables/useKeyHints'
+import LevelClearedDialog from '@/components/LevelClearedDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -261,6 +280,8 @@ const LETTER_W = 11.5
 const SLOT_PAD = 26
 
 const levelName = ref('听力听写')
+/** 关卡列表（用于判断「还有没有下一关」以及下一关叫什么） */
+const levels = ref([])
 const sentences = ref([])
 const answers = ref([])
 const current = ref(1)
@@ -297,6 +318,35 @@ const reviewList = computed(() =>
     explain: d.correct ? null : explainMap.value[d.sentenceId] || null
   }))
 )
+
+/**
+ * 当前关卡的后一关；已经是最后一关（或关卡列表没取到）时为 null。
+ * 沿用后端返回的关卡顺序，不依赖 id 递增。
+ */
+const nextLevel = computed(() => {
+  const arr = levels.value
+  if (!arr.length) return null
+  const i = arr.findIndex((l) => String(l.id) === String(levelId.value))
+  return i >= 0 && i < arr.length - 1 ? arr[i + 1] : null
+})
+
+/** 通过且还有下一关 → 给「下一关」按钮 */
+const showNext = computed(() => !!result.value?.passed && !!nextLevel.value)
+
+/** 通过且已经是最后一关 → 用收尾文案替代「下一关」 */
+const allCleared = computed(
+  () => !!result.value?.passed && !nextLevel.value && levels.value.length > 0
+)
+
+/**
+ * 最后一关通关时弹一次庆祝框。
+ * 用 watch 而不是直接写在 submit 里：allCleared 依赖 levels 与 result 两处数据，
+ * 谁先到齐不固定；盯着它翻成 true 才不会漏弹，也不会重复弹。
+ */
+const celebrateVisible = ref(false)
+watch(allCleared, (v) => {
+  if (v) celebrateVisible.value = true
+})
 
 /** 限制并发地跑一批任务，避免一次性打满后端 */
 async function runWithConcurrency(items, limit, worker) {
@@ -709,6 +759,26 @@ function goBack() {
   router.replace('/listen')
 }
 
+/**
+ * 直接进入下一关（保持当前难易模式）。
+ * 路由参数变化会复用组件实例，所以先清掉结算态，避免停在上关成绩页。
+ */
+function goNext() {
+  if (!nextLevel.value) return
+  result.value = null
+  explainMap.value = {}
+  router.replace(`/listen/${nextLevel.value.id}/${mode.value}`)
+}
+
+/** 拉关卡列表，仅用于判断有没有下一关；失败不影响正常练习 */
+async function loadLevels() {
+  try {
+    levels.value = (await listenApi.levels()) || []
+  } catch (e) {
+    /* 拿不到就当没有下一关 */
+  }
+}
+
 async function retryAll() {
   result.value = null
   explainMap.value = {}
@@ -752,6 +822,11 @@ useHotkey({
   },
   Enter: () => {
     if (result.value) {
+      // 弹窗还开着时，Enter 先收弹窗，别隔着一层遮罩把页面跳走
+      if (celebrateVisible.value) {
+        celebrateVisible.value = false
+        return true
+      }
       goBack()
       return true
     }
@@ -776,22 +851,35 @@ useHotkey({
     return true
   },
   Escape: () => {
+    // 庆祝弹窗开着时，Esc 只负责关弹窗，别把关卡页也一起退了
+    if (celebrateVisible.value) {
+      celebrateVisible.value = false
+      return true
+    }
     onBack()
     return true
   },
   r: (e) => {
+    if (celebrateVisible.value) return false
     if (!result.value) return false
     retryAll()
+    return true
+  },
+  // 结算页「下一关」的键盘入口；没有下一关时把 n 放行
+  n: () => {
+    if (!result.value || !showNext.value) return false
+    goNext()
     return true
   }
 })
 
 /* ---------------- 键位提示条 ---------------- */
 watch(
-  [judged, revealed, () => result.value, () => sentences.value.length, isHard, curPlayedTimes],
+  [judged, revealed, () => result.value, () => sentences.value.length, isHard, curPlayedTimes, showNext],
   () => {
     if (result.value) {
       setHints([
+        ...(showNext.value ? [{ keys: ['n'], label: '下一关' }] : []),
         { keys: ['Enter'], label: '返回关卡' },
         { keys: ['r'], label: '再来一次' }
       ])
@@ -819,7 +907,10 @@ watch(
   { immediate: true }
 )
 
-onMounted(load)
+onMounted(async () => {
+  await loadLevels()
+  await load()
+})
 
 /*
  * 同关卡切换 EASY / HARD 时路由参数变了，但组件被复用、setup 不重跑。
@@ -829,6 +920,8 @@ onMounted(load)
 watch([levelId, mode], (next, prev) => {
   if (next[0] === prev[0] && next[1] === prev[1]) return
   if (next[0] == null) return
+  // 换关卡后「下一关」的目标也变了，顺手刷新关卡列表
+  if (next[0] !== prev[0]) loadLevels()
   load()
 })
 

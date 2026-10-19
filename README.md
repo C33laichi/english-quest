@@ -4,7 +4,7 @@
 
 把枯燥的备考变成一场有进度、有等级、有反馈的通关之旅 —— 答题赚积分、解锁关卡、冲击等级与排行榜，用游戏化激励解决专升本备考中「坚持不下去」的核心痛点。
 
-> **完整可跑**：Spring Boot 3 + Vue 3 · 15 张表 · 9 个 REST 控制器 · 57 个接口
+> **完整可跑**：Spring Boot 3 + Vue 3 · 15 张表 · 9 个 REST 控制器 · 53 个接口
 > **离线可跑**：不用联网、不用 AI Key，四项 AI 能力自动降级为本地生成，内容真实可用
 > **全键盘可玩**：答题、听写、翻页全程不碰鼠标
 
@@ -121,7 +121,7 @@
 | **针对性讲解** | 同一题选 B 和选 C 是两种错法，讲解跟着实际错选走，并按 `(模块, 题号, 错选)` 缓存全站复用 |
 | **单一强调色设计系统** | 全站唯一强调色 + CSS 变量 token 化，改视觉只改 token；浅色 / 深色 / 跟随系统三态主题，组件样式零改动 |
 | **键盘全流程** | 选择题用功能键区数字键作答、听力用逐格输入 + 快捷键重听，整关可以纯键盘完成 |
-| **47 个自建脚本** | 其中 24 个回归 / 校验脚本：接口回归 + CDP 驱动的真实 Chrome 端到端（含像素级主题判定、音频调用栈诊断） |
+| **24 个自动化脚本** | 接口回归 + CDP 驱动的真实 Chrome 端到端（含像素级主题判定、音频调用栈诊断） |
 
 展开的技术细节见文末[关键设计说明](#十关键设计说明)。
 
@@ -212,12 +212,9 @@ mysql -uroot -p < sql/05_init_listen.sql   # 听力：建 2 张表 + 6 关 / 150
 >
 > 该脚本与 `sql/01_schema.sql` 的第 13 节内容保持一致，改一处要同步另一处。
 
-### 1.1 听力音频（已随仓库提供，通常无需操作）
+### 1.1 生成听力音频（首次部署必做）
 
-150 句听力语料的 mp3 **已随仓库一起提供**（`frontend/public/audio/listen/`，共约 3.3 MB），
-克隆下来即可使用，**听力关卡不需要任何额外步骤**。
-
-只有需要**重新生成**时才跑（换音色、改语料、音频损坏）：
+听力语料音频**不随 Git 仓库提供**，需要跑一次生成脚本（约 1 分钟）：
 
 ```bash
 pip install edge-tts
@@ -225,7 +222,7 @@ python scripts/gen_listen_audio.py
 ```
 
 脚本会调用微软 Edge 的 Neural 语音（`en-US-AriaNeural`）把 150 句合成 mp3，
-输出到 `frontend/public/audio/listen/{句子ID}.mp3`。
+输出到 `frontend/public/audio/listen/{句子ID}.mp3`，共约 3.3 MB。
 支持断点续传：已存在的文件会跳过，可反复执行。
 
 > 为什么预生成音频而不是运行时合成：听写的答案就是句子本身。
@@ -294,7 +291,7 @@ npm run dev
 
 ```bash
 cd frontend && npm run build                 # 产物落在 frontend/dist
-cd ../backend && mvn package -DskipTests     # 产物 target/english-quest.jar（约 50MB，已含全部依赖）
+cd ../backend && mvn package -DskipTests     # 产物 target/english-quest.jar（约 32MB，已含全部依赖）
 ```
 
 **必须包含**：
@@ -303,22 +300,13 @@ cd ../backend && mvn package -DskipTests     # 产物 target/english-quest.jar�
 | --- | --- |
 | `backend/`（源码）+ `pom.xml` | 也可只给 `target/english-quest.jar`（fat jar，可直接 `java -jar`） |
 | `frontend/` | 前端源码；带上 `dist` 则对方不装 Node 也能部署 |
-| `frontend/public/audio/listen/*.mp3` | **150 句听力音频 / 3.3MB，缺了听力关就没声音**。已在仓库里，但打包时注意别把整个 `frontend/public/` 排除掉 |
+| `frontend/public/audio/listen/*.mp3` | **150 句听力音频 / 3.3MB，缺了听力关就没声音**。它不在 Git 仓库里，最容易被打包时漏掉 |
 | `frontend/public/fonts/*.woff2` | Geist 字体，缺了会退化成系统字体 |
 | `sql/*.sql` | 建表 + 全部初始数据（180 词 / 240 题 / 28 天语法 / 150 句听力语料） |
 | `README.md` | 启动步骤与演示账号 |
 
 **建议排除**：`frontend/node_modules/`（数百 MB，对方 `npm install` 即可）、
 `.workbuddy/`（本地助手数据）。
-
-> ⚠️ **只把 `dist` 丢给普通静态服务器会打不开页面。** 前端请求走相对路径 `/api`，
-> 靠的是 vite dev server 的代理转发到 8090 —— 而**代理只在 `npm run dev` 时存在**。
-> 一旦用静态服务器（例如 `npx serve`）托管 `dist`，`/api` 会全部 404、页面一片空白。
-> 请改用仓库自带的零依赖启动器（托管 `dist` + 把 `/api` 反代到 8090）：
->
-> ```bash
-> node scripts/serve_dist.mjs            # 默认 http://127.0.0.1:5174
-> ```
 
 **对方拿到后**：装 JDK 17 + MySQL 8 + Node 18 → 导入 `sql/*.sql` →
 改 `application.yml` 的数据源密码 → 按上面步骤启动。全程无需联网、无需 AI Key。
@@ -333,7 +321,7 @@ cd ../backend && mvn package -DskipTests     # 产物 target/english-quest.jar�
 >    那么 `backend/target/classes/application.yml` 和 **`target/english-quest.jar` 内嵌的那份
 >    配置**都会保留它 —— 只改源码不重新打包，等于没改。确认方式：
 >    `jar xf target/english-quest.jar BOOT-INF/classes/application.yml` 后 `grep api-key`。
-> 2. **`target/` 尽量别一起打包**（fat jar 约 50MB，且可能夹带上一条说的旧配置）；
+> 2. **`target/` 尽量别一起打包**（fat jar 32MB，且可能夹带上一条说的旧配置）；
 >    真要给 jar，就用**重新打包后**的那个。
 >
 > 交付前跑一次 `node scripts/ai_local_mode_check.mjs`：25 项全过 = 四项 AI 能力都在离线生成。
@@ -498,7 +486,7 @@ mysql -h ::1 -u root -p english_quest < sql/03_init_grammar.sql
 | 强调色 | **紫靛 `#4f46e5`**（全站唯一强调色，不设第二强调色） |
 | 中性色 | 冷调蓝灰：底板 `#f4f6f8` / 侧栏 `#14181f` / 正文 `#10151c` |
 | 语义色 | 降饱和保留：成功 `#15803d` / 危险 `#b91c1c` / 警告 `#a16207`，仅用于判分反馈 |
-| 字体 | Geist Variable，**本地自托管**（`frontend/public/fonts/`，约 45KB） |
+| 字体 | Geist Variable，**本地自托管**（`frontend/public/fonts/`，46KB） |
 | 圆角 | 单一体系：容器 10px / 内部 7px / 微件 5px / 药丸 full |
 | 动效 | 只保留状态反馈类，统一 `cubic-bezier(0.4,0,0.2,1)` / 180ms，且响应 `prefers-reduced-motion` |
 

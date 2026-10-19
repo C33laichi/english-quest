@@ -7,7 +7,8 @@
 
     <div class="keybar-right">
       <div class="keybar-hint">
-        <kbd>?</kbd>
+        <!-- 「?」本身就要按 Shift 才打得出来，只写 ? 会让人以为有一个单独的问号键 -->
+        <kbd>Shift</kbd><kbd>?</kbd>
         <span class="keybar-tip">全部快捷键</span>
       </div>
       <span v-if="status" class="keybar-status">{{ status }}</span>

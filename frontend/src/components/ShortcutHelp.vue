@@ -40,7 +40,7 @@ const groups = [
   {
     label: '通用',
     rows: [
-      { label: '打开 / 关闭本面板', keys: ['?'] },
+      { label: '打开 / 关闭本面板', keys: ['Shift', '?'] },
       { label: '关闭弹窗', keys: ['Esc'] }
     ]
   }

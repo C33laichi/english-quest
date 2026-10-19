@@ -133,8 +133,17 @@
           </div>
         </div>
 
+        <!-- 通关后：非最后一关给「下一关」；最后一关不出现该按钮，改用收尾文案 -->
+        <div v-if="allCleared" class="all-cleared">
+          Congratulations！You cleared the level.
+          <i>你已通关全部 {{ levels.length }} 个词汇关卡</i>
+        </div>
+
         <div class="btn-row">
-          <el-button class="btn-primary" @click="goBack">返回关卡</el-button>
+          <el-button v-if="showNext" class="btn-primary" @click="goNext">
+            下一关 · {{ nextLevel.name }}
+          </el-button>
+          <el-button :class="showNext ? 'btn-ghost' : 'btn-primary'" @click="goBack">返回关卡</el-button>
           <el-button class="btn-ghost" @click="retryAll">再来一次</el-button>
         </div>
       </template>
@@ -143,6 +152,15 @@
         <span class="icon">📭</span>本关暂无题目
       </div>
     </div>
+
+    <!-- 最后一关通关：弹窗庆祝（中间关有「下一关」，不打断节奏） -->
+    <LevelClearedDialog
+      v-model="celebrateVisible"
+      kind="词汇"
+      :level-count="levels.length"
+      @back="goBack"
+      @retry="retryAll"
+    />
   </div>
 </template>
 
@@ -153,6 +171,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { vocabApi, aiApi } from '@/api'
 import { useHotkey } from '@/composables/useHotkey'
 import { useKeyHints } from '@/composables/useKeyHints'
+import LevelClearedDialog from '@/components/LevelClearedDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -169,6 +188,8 @@ const { setHints, setStatus, clearHints } = useKeyHints()
  */
 const levelId = computed(() => route.params.levelId)
 const levelName = ref('词汇闯关')
+/** 关卡列表（用于判断「还有没有下一关」以及下一关叫什么） */
+const levels = ref([])
 const questions = ref([])
 const answers = ref([])
 const current = ref(1)
@@ -197,6 +218,35 @@ const reviewList = computed(() =>
     return { ...w, explain: isChoice ? entry || null : null }
   })
 )
+
+/**
+ * 当前关卡的「后一关」；已经是最后一关（或关卡列表没取到）时为 null。
+ * 关卡按后端返回的顺序排列，所以用下标找下一条即可，不必依赖 id 递增。
+ */
+const nextLevel = computed(() => {
+  const arr = levels.value
+  if (!arr.length) return null
+  const i = arr.findIndex((l) => String(l.id) === String(levelId.value))
+  return i >= 0 && i < arr.length - 1 ? arr[i + 1] : null
+})
+
+/** 通关且还有下一关 → 给「下一关」按钮 */
+const showNext = computed(() => !!result.value?.passed && !!nextLevel.value)
+
+/** 通关且已经是最后一关 → 用收尾文案替代「下一关」 */
+const allCleared = computed(
+  () => !!result.value?.passed && !nextLevel.value && levels.value.length > 0
+)
+
+/**
+ * 最后一关通关时弹一次庆祝框。
+ * 用 watch 而不是直接写在 submit 里：allCleared 依赖 levels 与 result 两处数据，
+ * 谁先到齐不固定；盯着它翻成 true 才不会漏弹，也不会重复弹。
+ */
+const celebrateVisible = ref(false)
+watch(allCleared, (v) => {
+  if (v) celebrateVisible.value = true
+})
 
 /** 限制并发地跑一批任务：全并发会打满后端，串行又让学生等太久 */
 async function runWithConcurrency(items, limit, worker) {
@@ -334,6 +384,18 @@ function goBack() {
   router.replace('/vocab')
 }
 
+/**
+ * 直接进入下一关。
+ * 组件会被 Vue Router 复用（同一路由不同 levelId），所以要先清掉结算态，
+ * 否则切过去之后模板还停在上一关的成绩页。
+ */
+function goNext() {
+  if (!nextLevel.value) return
+  result.value = null
+  explainMap.value = {}
+  router.replace(`/quiz/vocab/${nextLevel.value.id}`)
+}
+
 async function submit() {
   loading.value = true
   try {
@@ -355,6 +417,9 @@ async function retryAll() {
 }
 
 async function load() {
+  // 切关卡时组件被复用、setup 不重跑，结算态必须在这里清掉
+  result.value = null
+  explainMap.value = {}
   loading.value = true
   try {
     const list = (await vocabApi.questions(levelId.value)) || []
@@ -382,6 +447,11 @@ useHotkey(
     4: () => choose(3),
     Enter: () => {
       if (result.value) {
+        // 弹窗还开着时，Enter 先收弹窗，别隔着一层遮罩把页面跳走
+        if (celebrateVisible.value) {
+          celebrateVisible.value = false
+          return true
+        }
         goBack()
         return true
       }
@@ -389,6 +459,12 @@ useHotkey(
       return true
     },
     Escape: () => {
+      // 庆祝弹窗开着时，Esc 只负责关弹窗 ——
+      // 不然一按 Esc 就顺着「退出」把关卡页也一起退了，庆祝瞬间变事故
+      if (celebrateVisible.value) {
+        celebrateVisible.value = false
+        return true
+      }
       onBack()
       return true
     },
@@ -403,7 +479,14 @@ useHotkey(
       return true
     },
     r: () => {
+      if (celebrateVisible.value) return false
       if (result.value) retryAll()
+      return true
+    },
+    // 结算页「下一关」的键盘入口；没有下一关时把 n 放行，不拦截
+    n: () => {
+      if (!result.value || !showNext.value) return false
+      goNext()
       return true
     }
   },
@@ -413,10 +496,12 @@ useHotkey(
 
 /** 键位提示条内容随题型切换 */
 watch(
-  [() => q.value.type, () => result.value, answeredCount, () => questions.value.length],
+  [() => q.value.type, () => result.value, answeredCount, () => questions.value.length, showNext],
   () => {
     if (result.value) {
       setHints([
+        // 有下一关时把 n 放到最前面，和结算页主按钮对齐
+        ...(showNext.value ? [{ keys: ['n'], label: '下一关' }] : []),
         { keys: ['Enter'], label: '返回关卡' },
         { keys: ['r'], label: '再来一次' }
       ])
@@ -437,11 +522,11 @@ watch(
 
 onMounted(async () => {
   try {
-    const levels = (await vocabApi.levels()) || []
-    const lv = levels.find((l) => String(l.id) === String(levelId.value))
+    levels.value = (await vocabApi.levels()) || []
+    const lv = levels.value.find((l) => String(l.id) === String(levelId.value))
     if (lv) levelName.value = lv.name
   } catch (e) {
-    /* 拿不到就用默认标题 */
+    /* 拿不到就用默认标题（同时也拿不到"下一关"） */
   }
   await load()
 })

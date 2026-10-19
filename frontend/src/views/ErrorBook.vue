@@ -53,7 +53,7 @@
           <div v-if="retryId === item.id" class="retry-box">
             <el-input
               v-model="retryAnswer"
-              placeholder="输入你的答案（选择题填 A/B/C/D）"
+              :placeholder="retryPlaceholder(item)"
               @keyup.enter="doRetry(item)"
             />
             <div style="display:flex;gap:8px;margin-top:9px">
@@ -164,8 +164,9 @@ watch(speaking, (v) => {
 
 function retryPlaceholder(item) {
   if (item.module === 'LISTENING') return '重听并敲出完整句子（少一个词也算部分正确）'
-  if (item.module === 'VOCAB') return '输入正确拼写（选择题填 A/B/C/D）'
-  return '输入你的答案（选择题填 A/B/C/D）'
+  // 语法题一律要求填选项内容：ABCD 只是题面上的标记，写进答案毫无复习价值
+  if (item.module === 'GRAMMAR') return '输入正确选项的内容（敲 A/B/C/D 也认）'
+  return '输入正确拼写（选择题填 A/B/C/D）'
 }
 
 async function load() {

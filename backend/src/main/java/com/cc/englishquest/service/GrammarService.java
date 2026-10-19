@@ -198,9 +198,10 @@ public class GrammarService {
             if (correct) {
                 correctCount++;
             } else {
-                errorBookService.record(userId, MODULE, q.getId(),
-                        q.getKnowledgePoint(), q.getStem(),
-                        q.getAnswer(), userAnswer, q.getAnalysis());
+                // 错题本里存「选项内容」而不是 A/B/C/D ——
+                // 只存字母的话，用户在错题本上既回忆不起自己选了什么，
+                // 也没法把错答和正确答案对照，重练还得再背一次字母表。
+                errorBookService.recordGrammar(userId, q, userAnswer);
                 SubmitResultVO.WrongItem wrong = new SubmitResultVO.WrongItem();
                 wrong.setQuestionId(q.getId());
                 wrong.setStem(q.getStem());
@@ -316,7 +317,7 @@ public class GrammarService {
         return count == null ? 28 : count.intValue();
     }
 
-    private String normalize(String s) {
+    private static String normalize(String s) {
         return s == null ? "" : s.trim();
     }
 
@@ -331,7 +332,7 @@ public class GrammarService {
      * @param key 选项 key，可能为 null / 空 / 非法值
      * @return 选项文本；未作答或 key 非法时返回空串
      */
-    private String optionText(GrammarQuestion q, String key) {
+    static String optionText(GrammarQuestion q, String key) {
         if (q == null) {
             return "";
         }
@@ -346,5 +347,22 @@ public class GrammarService {
             case "D" -> normalize(q.getOptionD());
             default -> "";
         };
+    }
+
+    /**
+     * 把「学生答案」统一翻译成人能读的文本 —— 错题本全程用这一套。
+     * <p>
+     * 与 {@link #optionText} 的差别：选择题的 A/B/C/D 换成选项内容，
+     * 而填空题的答案本身就是文本、纯文本作答本来也不是选项 key，
+     * 这两种情况原样返回。原样返回还顺带保证了「已经是文本的旧记录」再套一遍
+     * 也不会变形（幂等），历史错题可以放心就地翻译。
+     */
+    public static String answerText(GrammarQuestion q, String key) {
+        String raw = normalize(key);
+        if (raw.isEmpty()) {
+            return "";
+        }
+        String text = optionText(q, raw);
+        return text.isEmpty() ? raw : text;
     }
 }

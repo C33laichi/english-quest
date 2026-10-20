@@ -22,5 +22,11 @@ public class AdminStatsVO {
 
     private Long grammarLessonCount;
 
+    /** 词汇题总数：题库会随批量导入持续增长，必须实时统计，不能写死在前端 */
+    private Long vocabQuestionCount;
+
+    /** 语法题总数：同上 */
+    private Long grammarQuestionCount;
+
     private Long todayAnswerCount;
 }

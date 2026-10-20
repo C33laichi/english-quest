@@ -40,11 +40,11 @@
         </div>
         <div class="res-row">
           <span>词汇题目</span>
-          <b>240 题</b>
+          <b>{{ stats.vocabQuestionCount ?? 0 }} 题</b>
         </div>
         <div class="res-row" style="border-bottom:none">
           <span>语法题目</span>
-          <b>84 题</b>
+          <b>{{ stats.grammarQuestionCount ?? 0 }} 题</b>
         </div>
       </div>
 

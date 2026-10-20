@@ -332,7 +332,12 @@ public class AdminService {
     public AdminStatsVO stats() {
         AdminStatsVO vo = new AdminStatsVO();
         vo.setUserCount(userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getRole, "STUDENT")));
-        vo.setQuestionCount(vocabQuestionMapper.selectCount(null) + grammarQuestionMapper.selectCount(null));
+        // 题数会随批量导入持续增长，单独给出词汇/语法两项，供后台总览直接展示
+        Long vocabQuestionCount = vocabQuestionMapper.selectCount(null);
+        Long grammarQuestionCount = grammarQuestionMapper.selectCount(null);
+        vo.setVocabQuestionCount(vocabQuestionCount);
+        vo.setGrammarQuestionCount(grammarQuestionCount);
+        vo.setQuestionCount(vocabQuestionCount + grammarQuestionCount);
         vo.setAnswerCount(studyRecordMapper.selectCount(null));
         vo.setAiCallCount(aiCallLogMapper.selectCount(null));
         vo.setVocabLevelCount(vocabLevelMapper.selectCount(null));

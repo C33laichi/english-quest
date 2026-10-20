@@ -211,7 +211,7 @@ def main():
     U.check('Day 不存在 -> 400 且提示可读',
             r.get('code') == 400 and 'Day' in str(r.get('msg')), f'{st} {r}')
 
-    st, r = imp('a.pdf', b'%PDF-1.4 whatever', 'application/pdf')
+    st, r = imp('a.png', b'\x89PNG\r\n\x1a\n whatever', 'image/png')
     U.check('不支持的扩展名 -> 400', r.get('code') == 400 and 'xlsx' in str(r.get('msg')), f'{st} {r}')
 
     st, r = imp('noheader.csv', '甲,乙\n丙,丁\n'.encode('utf-8'), 'text/csv')

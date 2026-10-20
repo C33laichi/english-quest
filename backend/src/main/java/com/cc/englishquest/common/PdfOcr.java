@@ -73,6 +73,23 @@ public final class PdfOcr {
     }
 
     /**
+     * 版式：决定「很宽的空白」按什么含义处理。
+     *
+     * <p>同样是 4 个以上连续空格，在两种资料里意思完全不同，
+     * 所以不能只留一套规则：</p>
+     * <ul>
+     *   <li>语法/听力题面：那是被涂掉的填空横线，要让后面还能认出是"一个空"</li>
+     *   <li>词汇表（单词 + 释义两列）：那只是列与列之间的间距，硬塞进横线会把条目弄坏</li>
+     * </ul>
+     */
+    public enum Layout {
+        /** 带填空横线的题面：宽空白还原成 {@code ______} */
+        FILL_BLANK,
+        /** 单词表这种列式排版：宽空白一律压成单个空格 */
+        PLAIN
+    }
+
+    /**
      * 收拾 OCR 出来的文字：把"很宽的空白"还原成填空横线，顺手修几个常见误认。
      *
      * <p>规则只按行判断，因为选项行的宽空白是"两个选项之间的间距"，不能当横线：</p>
@@ -82,6 +99,11 @@ public final class PdfOcr {
      * </ul>
      */
     static String normalizeOcrText(String raw) {
+        return normalizeOcrText(raw, Layout.FILL_BLANK);
+    }
+
+    static String normalizeOcrText(String raw, Layout layout) {
+        boolean plain = layout == Layout.PLAIN;
         StringBuilder out = new StringBuilder(raw.length());
         for (String line : raw.split("\n")) {
             String t = line.replace('\u00A0', ' ').replace("\u200B", "");
@@ -89,14 +111,18 @@ public final class PdfOcr {
                 out.append('\n');
                 continue;
             }
-            if (OPTION_LINE.matcher(t.strip()).find()) {
+            if (plain || OPTION_LINE.matcher(t.strip()).find()) {
+                // 列式排版 / 选项行：空白只是间距，压掉即可
                 t = t.replaceAll("[ \t]{2,}", " ");
             } else {
                 t = t.replaceAll("[ \t]{4,}", " ______ ");
                 t = t.replaceAll("[ \t]{2,}", " ");
             }
-            // 竖线当大写 I（"| think" / "when | saw"），题库里没有真的竖线
-            t = t.replaceAll("(?<=[\\s,;:])[|](?=[\\sA-Za-z])", "I");
+            if (!plain) {
+                // 竖线当大写 I（"| think" / "when | saw"），题库里没有真的竖线。
+                // 词汇表里竖线常被当作列分隔符，所以列式排版下不动它。
+                t = t.replaceAll("(?<=[\\s,;:])[|](?=[\\sA-Za-z])", "I");
+            }
             out.append(t).append('\n');
         }
         return out.toString();
@@ -129,6 +155,10 @@ public final class PdfOcr {
     }
 
     public static Result recognize(byte[] bytes, Options opts) {
+        return recognize(bytes, opts, Layout.FILL_BLANK);
+    }
+
+    public static Result recognize(byte[] bytes, Options opts, Layout layout) {
         Options o = opts.withDefaults();
         long start = System.currentTimeMillis();
         try (PDDocument doc = PDDocument.load(bytes)) {
@@ -153,7 +183,7 @@ public final class PdfOcr {
                     synchronized (LOCK) {
                         text = tess.doOCR(img);
                     }
-                    all.append(normalizeOcrText(text)).append('\n');
+                    all.append(normalizeOcrText(text, layout)).append('\n');
                     done++;
                     if ((i + 1) % 5 == 0 || i + 1 == limit) {
                         log.info("OCR 进度 {}/{} 页", i + 1, limit);

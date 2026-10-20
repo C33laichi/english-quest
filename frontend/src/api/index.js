@@ -107,7 +107,7 @@ export const adminApi = {
    * 超时单独放宽到 60s：默认 20s 对"上传 + POI 解析 + 写库"偏紧。
    */
   importVocabQuestions: (formData, params) =>
-    request.post('/admin/vocab/import', formData, { params, timeout: 60000 }),
+    request.post('/admin/vocab/import', formData, { params, timeout: 300000 }),
 
   grammarLessons: () => request.get('/admin/grammar/lessons'),
   saveGrammarLesson: (data) => request.post('/admin/grammar/lessons', data),

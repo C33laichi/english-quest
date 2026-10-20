@@ -33,6 +33,14 @@ public class VocabImportVO {
     /** 是否为解析预览（未写库） */
     private boolean dryRun;
 
+    /**
+     * PDF 导入时的识别摘要：多少页、是不是扫描件、认出多少条、忽略了多少行。
+     *
+     * <p>只对 PDF 有值，Excel / CSV 为 null —— 表格文件的列名本身就是"识别结果"，
+     * 不需要再解释一遍。</p>
+     */
+    private String tip;
+
     /** 前若干行的解析结果，供管理员核对 */
     private List<Row> preview = new ArrayList<>();
 

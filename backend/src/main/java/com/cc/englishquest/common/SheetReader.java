@@ -76,7 +76,7 @@ public final class SheetReader {
         if (name.endsWith(".csv") || name.endsWith(".txt") || name.isEmpty() || name.endsWith(".text")) {
             return readCsv(bytes);
         }
-        throw BizException.badRequest("只支持 .xlsx / .xls / .csv 文件，当前是「"
+        throw BizException.badRequest("只支持 .xlsx / .xls / .csv / .pdf 文件，当前是「"
                 + file.getOriginalFilename() + "」");
     }
 

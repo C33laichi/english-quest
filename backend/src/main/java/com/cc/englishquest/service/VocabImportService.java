@@ -2,6 +2,8 @@ package com.cc.englishquest.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cc.englishquest.common.BizException;
+import com.cc.englishquest.common.PdfOcr;
+import com.cc.englishquest.common.PdfText;
 import com.cc.englishquest.common.SheetReader;
 import com.cc.englishquest.entity.VocabLevel;
 import com.cc.englishquest.entity.VocabQuestion;
@@ -10,10 +12,12 @@ import com.cc.englishquest.mapper.VocabQuestionMapper;
 import com.cc.englishquest.vo.VocabImportVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -28,8 +32,10 @@ import java.util.Set;
 /**
  * 词汇题库批量导入。
  *
- * <p>做三件事：把上传的文件（.xlsx / .xls / .csv）解析成行 → 逐行校验并补齐
- * 字段 → 去重后落库。文件的读取与解码走 {@link SheetReader}（与语法导入共用）。</p>
+ * <p>做三件事：把上传的文件（.xlsx / .xls / .csv / .pdf）解析成行 → 逐行校验并补齐
+ * 字段 → 去重后落库。表格文件的读取与解码走 {@link SheetReader}，
+ * PDF（含扫描件）由 {@link VocabPdfParser} 还原成同样的表头 + 数据行，
+ * 两条来源在这里汇成同一个 grid，后面的校验、去重、干扰项生成完全共用。</p>
  *
  * <p>核心设计取舍：</p>
  *
@@ -118,6 +124,34 @@ public class VocabImportService {
     private final VocabQuestionMapper vocabQuestionMapper;
     private final VocabLevelMapper vocabLevelMapper;
 
+    /** OCR 词库目录（扫描件的单词表要识别成文字才能用） */
+    @Value("${app.ocr.datapath:tessdata}")
+    private String ocrDatapath;
+
+    /** 识别语言：中英混排要两个都装 */
+    @Value("${app.ocr.lang:chi_sim+eng}")
+    private String ocrLang;
+
+    /** 渲染精度：150~200 够用，再高只变慢 */
+    @Value("${app.ocr.dpi:180}")
+    private int ocrDpi;
+
+    /** 单次最多识别多少页（一页 1~2 秒，防请求超时） */
+    @Value("${app.ocr.max-pages:40}")
+    private int ocrMaxPages;
+
+    private PdfOcr.Options ocrOptions() {
+        return new PdfOcr.Options(ocrDatapath, ocrLang, ocrDpi, ocrMaxPages);
+    }
+
+    private static byte[] readBytes(MultipartFile file) {
+        try {
+            return file.getBytes();
+        } catch (IOException e) {
+            throw BizException.badRequest("读取上传文件失败，请重新选择文件");
+        }
+    }
+
     /** 只解析不写库，给管理员核对 */
     public VocabImportVO preview(MultipartFile file, Long levelId, String defaultType) {
         return run(file, levelId, defaultType, true);
@@ -144,10 +178,21 @@ public class VocabImportService {
         }
         String fallbackType = normalizeDefaultType(defaultType);
 
-        List<List<String>> grid = SheetReader.read(file);
-
+        List<List<String>> grid;
         VocabImportVO vo = new VocabImportVO();
         vo.setDryRun(dryRun);
+
+        // 读取文件：PDF 单独走解析，其余交给 SheetReader。
+        // PDF 不能直接丢给 SheetReader —— 它的兜底分支按文本解二进制流，
+        // 结果是满屏乱码行，最后只会报「表头找不到列」，管理员看不出真正原因。
+        byte[] bytes = readBytes(file);
+        if (PdfText.isPdf(bytes)) {
+            VocabPdfParser.Result pdf = VocabPdfParser.parse(bytes, ocrOptions());
+            grid = pdf.grid();
+            vo.setTip(pdf.tip());
+        } else {
+            grid = SheetReader.read(file);
+        }
 
         // --- 表头 ---
         int headerIdx = SheetReader.firstNonBlankRow(grid);

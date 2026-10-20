@@ -119,8 +119,15 @@
     <el-dialog v-model="importDialog" title="批量导入词汇" width="780px" @closed="resetImport">
       <el-alert type="info" :closable="false" show-icon style="margin-bottom:16px">
         <template #title>
-          支持 .xlsx / .xls / .csv。表头必须有「单词」「中文释义」两列；
+          支持 .xlsx / .xls / .csv / <b>.pdf</b>。表头必须有「单词」「中文释义」两列；
           <b>选项 A~D 可以全部留空</b>，留空时系统会自动从题库已有的释义里挑 3 个当干扰项并随机决定正确项位置。
+        </template>
+        <template #default>
+          <div class="muted" style="font-size:12px;line-height:1.7;margin-top:4px">
+            PDF 直接吃单词表：一行一条，「英文在前、中文在后」，音标与词性可以夹在中间
+            （如 abandon /əˈbændən/ v. 放弃）。有文字层的直接抽文字；扫描件会先做 OCR，比较慢
+            （一页约 1~2 秒，默认最多识别 40 页）。
+          </div>
         </template>
       </el-alert>
 
@@ -147,7 +154,7 @@
               drag
               :auto-upload="false"
               :limit="1"
-              accept=".xlsx,.xls,.csv"
+              accept=".xlsx,.xls,.csv,.pdf"
               :on-change="onFileChange"
               :on-exceed="onFileExceed"
             >
@@ -173,6 +180,15 @@
         <el-divider content-position="left">
           {{ imp.result.dryRun ? '解析结果（尚未写入题库）' : '导入结果' }}
         </el-divider>
+
+        <!-- PDF/OCR 的识别摘要：多少页、认出多少条、忽略了什么，读不懂就不敢点导入 -->
+        <el-alert
+          v-if="imp.result.tip" type="warning" :closable="false" show-icon
+          style="margin-bottom:12px"
+        >
+          <template #title><span style="font-size:13px">识别情况</span></template>
+          <div style="font-size:12px;line-height:1.8">{{ imp.result.tip }}</div>
+        </el-alert>
 
         <div class="imp-stats">
           <span class="imp-stat">文件数据行 <b>{{ imp.result.total }}</b></span>

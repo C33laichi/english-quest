@@ -36,6 +36,9 @@ login = U.login
 
 TMP = tempfile.mkdtemp(prefix='eq_import_')
 
+# PDF 导入用例的样例文件（2 页文字层单词表，见 K 段）
+FIXTURE_PDF = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fixtures', '词汇表样例.pdf')
+
 
 # ================================================================= 造测试文件
 
@@ -200,7 +203,7 @@ def main():
     st, r = imp('a.csv', CSV_BASIC.encode(), 'text/csv', level=999999)
     check('关卡不存在 -> 400', r.get('code') == 400 and '关卡' in str(r.get('msg')), f'{st} {r}')
 
-    st, r = imp('a.pdf', b'%PDF-1.4 whatever', 'application/pdf')
+    st, r = imp('a.png', b'\x89PNG\r\n\x1a\n whatever', 'image/png')
     check('不支持的扩展名 -> 400', r.get('code') == 400 and 'xlsx' in str(r.get('msg')), f'{st} {r}')
 
     st, r = imp('noheader.csv', '甲,乙\n丙,丁\n'.encode(), 'text/csv')
@@ -410,6 +413,31 @@ def main():
     check('选项确实是 4 个且包含正确释义',
           nur.get('meaning') in [nur.get('optionA'), nur.get('optionB'), nur.get('optionC'), nur.get('optionD')],
           nur)
+
+    # ============================================================ K. PDF 导入
+    print('\n--- K. PDF 导入（单词表直接上传）---')
+    # 样例是 2 页文字层单词表：编号 + 单词 + 音标 + 词性 + 中文释义，24 条，
+    # 外加「Word List 5」这类页眉行（应当被丢掉而不是变成脏题）。
+    # ★ 只跑预览（dryRun），不写库，所以这里不需要清理。
+    with open(FIXTURE_PDF, 'rb') as f:
+        pdf_bytes = f.read()
+    st, r = imp('词汇表样例.pdf', pdf_bytes, 'application/pdf')
+    d = r.get('data') or {}
+    check('文字层 PDF -> 200（不再当成不支持的类型）', r.get('code') == 200, f'{st} {r.get("msg")}')
+    check('PDF 识别摘要说清了页数与条数',
+          '2 页' in str(d.get('tip')) and '24 条' in str(d.get('tip')), d.get('tip'))
+    check('24 条词条全部可导入', d.get('total') == 24 and d.get('insertable') == 24,
+          f"total={d.get('total')} insertable={d.get('insertable')}")
+    pv = (d.get('preview') or [{}])[0]
+    check('单词列没有把词性缩写粘进来（ambiguous 而不是 ambiguous adj）',
+          pv.get('word') == 'abandon', pv.get('word'))
+    check('释义与选项都出来了（干扰项自动生成）',
+          bool(pv.get('meaning')) and pv.get('answer') in list('ABCD'), pv)
+
+    # 扩展名是 .pdf、内容却不是 PDF：应该给"只支持 …"的明确提示，而不是 500
+    st, r = imp('假.pdf', b'not a pdf at all', 'application/pdf')
+    check('假 PDF -> 400 且提示点明支持的格式',
+          r.get('code') == 400 and 'pdf' in str(r.get('msg')).lower(), f'{st} {r}')
 
     # ============================================================ 清理
     print('\n--- 清理临时数据 ---')

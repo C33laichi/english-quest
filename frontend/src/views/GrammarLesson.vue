@@ -407,7 +407,10 @@ useHotkey({
   4: () => choose(3),
   Enter: () => {
     if (result.value) {
-      if (result.value.passed && result.value.unlockNext) goToDay(day + 1)
+      // 这里必须写 day.value —— day 是 computed，直接 `day + 1` 会得到 NaN，
+      // 路由变成 /lesson/NaN，页头显示「Day NaN」。
+      // （模板里能写 `day + 1` 是因为模板会自动解包 ref，脚本里不会。）
+      if (result.value.passed && result.value.unlockNext) goToDay(day.value + 1)
       else restart()
     } else if (!started.value) {
       start()

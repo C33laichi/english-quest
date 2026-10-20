@@ -35,6 +35,14 @@ public class GrammarImportVO {
     /** 本次涉及的 Day 数量（写库后用于回显"影响了几天的题"） */
     private int lessonCount;
 
+    /**
+     * 解析摘要（Excel/CSV 来源为 null）。
+     *
+     * <p>PDF 必须要有一句人话说明：识别到多少道单选题、哪些题型被跳过了。
+     * 否则用户上传一份「95 道填空题 + 52 道单选题」的 PDF，看到"可导入 52"只会以为系统坏了。</p>
+     */
+    private String tip;
+
     /** 前若干行的解析结果，供管理员核对 */
     private List<Row> preview = new ArrayList<>();
 

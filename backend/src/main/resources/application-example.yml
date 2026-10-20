@@ -84,6 +84,21 @@ app:
     # 填了 Key 想控成本时可以改成具体数字，比如 30
     chat-daily-limit: 0
     timeout-ms: 15000
+    # 语法题库导入时，给「扫描件里没有答案」的题自动作答：批量大小 / 单次超时
+    answer-batch: 12
+    answer-timeout-ms: 60000
+  # ------------------------------------------------------------
+  #  扫描件 PDF 的 OCR
+  #  只有「整页是图片、没有文字层」的 PDF 才会用到（每日刷题那类资料）。
+  #  datapath 是 Tesseract 词库目录，需要 eng.traineddata 与 chi_sim.traineddata；
+  #  仓库里已经带了 backend/tessdata，从 backend 目录启动即默认可用。
+  #  一页约 1~2 秒，max-pages 用来避免一次请求跑太久。
+  # ------------------------------------------------------------
+  ocr:
+    datapath: ${OCR_DATAPATH:tessdata}
+    lang: ${OCR_LANG:chi_sim+eng}
+    dpi: 180
+    max-pages: 40
   point:
     daily-limit: 200
     answer-point: 2

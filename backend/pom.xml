@@ -23,6 +23,8 @@
         <mybatis-plus.version>3.5.10.1</mybatis-plus.version>
         <hutool.version>5.8.35</hutool.version>
         <poi.version>5.4.0</poi.version>
+        <pdfbox.version>2.0.31</pdfbox.version>
+        <tess4j.version>5.11.0</tess4j.version>
     </properties>
 
     <dependencies>
@@ -71,6 +73,32 @@
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
             <version>${poi.version}</version>
+        </dependency>
+        <!--
+          PDFBox：语法题库支持直接导入 PDF 题目。
+          只用到 PDFTextStripper 这一小块（把字形序列还原成文字行），但它必须依赖
+          fontbox 解析字体里的 ToUnicode CMap——中文 PDF 少这一步就是一堆乱码。
+          ★ 选 2.x 而不是 3.x：2.x 的 API（PDDocument.load）稳定且网上资料多；
+            3.x 把 PDF 读取拆成了 pdfbox-io，日志改成 log4j-api，对我们没有收益。
+          ★ 扫描件（整页是图片）抽不出文字，这不是 PDFBox 的能力问题，是源文件没有文字层，
+            业务层（GrammarPdfParser）会识别并给出明确提示，不做 OCR。
+        -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>${pdfbox.version}</version>
+        </dependency>
+        <!--
+          Tess4J：给「扫描件 PDF」（整页是图片、没有文字层）做 OCR。
+          ★ 它是 Tesseract 的 JNA 封装，native 库（tesseract/leptonica）已经打在 jar 里，
+            不用另外装 tesseract.exe；但**词库 traineddata 不含**，要放在 tessdata 目录下。
+          ★ 只用它做"图片 -> 文字"，题目结构仍然由 GrammarPdfParser 统一解析。
+          ★ 识别慢（一页 1~2 秒），所以默认只识别前 N 页，见 app.ocr.max-pages。
+        -->
+        <dependency>
+            <groupId>net.sourceforge.tess4j</groupId>
+            <artifactId>tess4j</artifactId>
+            <version>${tess4j.version}</version>
         </dependency>
         <!-- Lombok -->
         <dependency>

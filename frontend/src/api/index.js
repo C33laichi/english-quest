@@ -118,8 +118,10 @@ export const adminApi = {
   /**
    * 语法题库批量导入。lessonId 是**默认**目标 Day（文件里「天数」列留空的行落到它，
    * 填了的行按自己的走，所以一份文件可以同时导入多天）。
-   * 同 importVocabQuestions，超时放宽到 60s。
+   *
+   * <p>超时给到 5 分钟：PDF 扫描件要逐页 OCR（一页 1~2 秒），缺答案时还要 AI 作答，
+   * 40 页大概就是 1 分多钟，用默认的 60 秒会直接超时，用户只会看到"网络错误"。</p>
    */
   importGrammarQuestions: (formData, params) =>
-    request.post('/admin/grammar/import', formData, { params, timeout: 60000 })
+    request.post('/admin/grammar/import', formData, { params, timeout: 300000 })
 }

@@ -187,8 +187,14 @@
     <el-dialog v-model="importDialog" title="批量导入语法题" width="800px" @closed="resetImport">
       <el-alert type="info" :closable="false" show-icon style="margin-bottom:16px">
         <template #title>
-          支持 .xlsx / .xls / .csv。表头必须有「题干」「选项A」「选项B」「选项C」「选项D」「正确答案」；
+          支持 .xlsx / .xls / .csv / <b>.pdf</b>。表格的表头必须有「题干」「选项A」「选项B」「选项C」「选项D」「正确答案」；
           <b>4 个选项必须全部填写</b>——语法题的干扰项要和题干空格搭配，系统不自动生成。
+        </template>
+        <template #default>
+          <div class="muted" style="font-size:12px;line-height:1.7;margin-top:4px">
+            PDF 两种都认：有文字层的直接抽文字；扫描件（整页是图片）会先做 OCR，比较慢（一页约 1~2 秒，默认最多识别 40 页）。
+            扫描件里通常没有答案，缺答案的题会交给 AI 作答，入库前<b>请务必抽查几道</b>。
+          </div>
         </template>
       </el-alert>
 
@@ -212,7 +218,7 @@
               drag
               :auto-upload="false"
               :limit="1"
-              accept=".xlsx,.xls,.csv"
+              accept=".xlsx,.xls,.csv,.pdf"
               :on-change="onFileChange"
               :on-exceed="onFileExceed"
             >
@@ -237,6 +243,15 @@
         <el-divider content-position="left">
           {{ imp.result.dryRun ? '解析结果（尚未写入题库）' : '导入结果' }}
         </el-divider>
+
+        <!-- PDF/OCR 的识别摘要：多少题、跳过什么、有没有缺答案，读不懂就不知道该不该点导入 -->
+        <el-alert
+          v-if="imp.result.tip" type="warning" :closable="false" show-icon
+          style="margin-bottom:12px"
+        >
+          <template #title><span style="font-size:13px">识别情况</span></template>
+          <div style="font-size:12px;line-height:1.8">{{ imp.result.tip }}</div>
+        </el-alert>
 
         <div class="imp-stats">
           <span class="imp-stat">文件数据行 <b>{{ imp.result.total }}</b></span>

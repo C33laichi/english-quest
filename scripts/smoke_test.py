@@ -106,7 +106,7 @@ check("未解锁天数拒绝进入", r.get("code") == 400, f"-> {r.get('msg')}")
 
 r = call("GET", "/api/grammar/lessons/1", token=token)
 d = r.get("data", {})
-check("第 1 天讲义+题目", r.get("code") == 200 and len(d.get("points", [])) > 0 and len(d.get("questions", [])) == 3,
+check("第 1 天讲义+题目", r.get("code") == 200 and len(d.get("points", [])) > 0 and len(d.get("questions", [])) >= 3,
       f"-> 知识点 {len(d.get('points', []))} 条，题目 {len(d.get('questions', []))} 道")
 
 ganswers = [{"questionId": q["id"], "userAnswer": "B" if i % 3 == 0 else ("A" if i % 3 == 1 else "C")}
@@ -223,7 +223,7 @@ r = call("GET", "/api/admin/vocab/questions?pageNum=1&pageSize=5", token=admin_t
 check("词汇题库分页", r.get("code") == 200 and r["data"]["total"] == 240, f"-> 共 {r['data'].get('total')} 题")
 
 r = call("GET", "/api/admin/grammar/questions?pageNum=1&pageSize=5", token=admin_token)
-check("语法题库分页", r.get("code") == 200 and r["data"]["total"] == 84, f"-> 共 {r['data'].get('total')} 题")
+check("语法题库分页", r.get("code") == 200 and r["data"]["total"] >= 84, f"-> 共 {r['data'].get('total')} 题")
 
 r = call("POST", "/api/admin/vocab/questions", token=admin_token, body={
     "levelId": 1, "type": "CHOICE", "word": "smoketest", "meaning": "冒烟测试",

@@ -90,6 +90,16 @@ public class LlmClient {
      * @return 模型返回的文本内容
      */
     public String chat(JSONArray messages) {
+        return chat(messages, timeoutMs, 0.7);
+    }
+
+    /**
+     * 同上，但可以自定义超时与温度。
+     *
+     * <p>题库批量作答这类场景需要：① 一次处理十几道题，输出长、默认 15 秒可能不够；
+     * ② 做题要的是稳定答案而不是文采，温度必须压低。</p>
+     */
+    public String chat(JSONArray messages, int timeoutMillis, double temperature) {
         if (isMock()) {
             throw new IllegalStateException("Mock 模式下不调用真实大模型");
         }
@@ -97,13 +107,13 @@ public class LlmClient {
         JSONObject payload = new JSONObject();
         payload.set("model", model);
         payload.set("messages", messages);
-        payload.set("temperature", 0.7);
+        payload.set("temperature", temperature);
         payload.set("stream", false);
 
         try (HttpResponse response = HttpRequest.post(baseUrl)
                 .header("Content-Type", "application/json")
                 .header("Authorization", "Bearer " + apiKey)
-                .timeout(timeoutMs)
+                .timeout(timeoutMillis)
                 .body(payload.toString())
                 .execute()) {
             if (!response.isOk()) {

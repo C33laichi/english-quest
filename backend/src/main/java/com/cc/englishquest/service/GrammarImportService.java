@@ -2,6 +2,8 @@ package com.cc.englishquest.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cc.englishquest.common.BizException;
+import com.cc.englishquest.common.PdfOcr;
+import com.cc.englishquest.common.PdfText;
 import com.cc.englishquest.common.SheetReader;
 import com.cc.englishquest.entity.GrammarLesson;
 import com.cc.englishquest.entity.GrammarQuestion;
@@ -10,10 +12,12 @@ import com.cc.englishquest.mapper.GrammarQuestionMapper;
 import com.cc.englishquest.vo.GrammarImportVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -114,6 +118,35 @@ public class GrammarImportService {
 
     private final GrammarQuestionMapper grammarQuestionMapper;
     private final GrammarLessonMapper grammarLessonMapper;
+    private final GrammarAiAnswerer aiAnswerer;
+
+    /** OCR 词库目录（扫描件才用得到） */
+    @Value("${app.ocr.datapath:tessdata}")
+    private String ocrDatapath;
+
+    /** 识别语言：中英混排的题库要两个都装 */
+    @Value("${app.ocr.lang:chi_sim+eng}")
+    private String ocrLang;
+
+    /** 渲染精度：150~200 够用，再高只变慢 */
+    @Value("${app.ocr.dpi:180}")
+    private int ocrDpi;
+
+    /** 单次最多识别多少页（一页 1~2 秒，防请求超时） */
+    @Value("${app.ocr.max-pages:40}")
+    private int ocrMaxPages;
+
+    private PdfOcr.Options ocrOptions() {
+        return new PdfOcr.Options(ocrDatapath, ocrLang, ocrDpi, ocrMaxPages);
+    }
+
+    private static byte[] readBytes(MultipartFile file) {
+        try {
+            return file.getBytes();
+        } catch (IOException e) {
+            throw BizException.badRequest("读取上传文件失败，请重新选择文件");
+        }
+    }
 
     /** 只解析不写库，给管理员核对 */
     public GrammarImportVO preview(MultipartFile file, Long lessonId) {
@@ -140,10 +173,28 @@ public class GrammarImportService {
             throw BizException.badRequest("请选择要导入的文件");
         }
 
-        List<List<String>> grid = SheetReader.read(file);
-
         GrammarImportVO vo = new GrammarImportVO();
         vo.setDryRun(dryRun);
+
+        // 读取文件：PDF 单独走解析，其余交给 SheetReader。
+        // 为什么不能直接丢给 SheetReader：它的兜底分支会按文本去解二进制流，
+        // 结果是一堆乱码行，校验阶段只会报「表头找不到列」，管理员完全看不出真正原因。
+        byte[] bytes = readBytes(file);
+        List<List<String>> grid;
+        if (PdfText.isPdf(bytes)) {
+            GrammarPdfParser.Result pdf = GrammarPdfParser.parse(bytes, ocrOptions());
+            grid = pdf.grid();
+            StringBuilder tip = new StringBuilder(pdf.tip());
+            if (pdf.missingAnswer() > 0) {
+                // 扫描件只印了题目、没印答案：让模型做一遍，做完留在预览里给人抽查
+                int answered = aiAnswerer.fill(grid);
+                tip.append(" 已用 AI 作答 ").append(answered).append(" 道，")
+                        .append("入库前请抽查几道（AI 答案可能有错，错了会直接影响错题本）");
+            }
+            vo.setTip(tip.toString());
+        } else {
+            grid = SheetReader.read(file);
+        }
 
         // --- 表头 ---
         int headerIdx = SheetReader.firstNonBlankRow(grid);

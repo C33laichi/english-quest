@@ -41,7 +41,9 @@ export const gameApi = {
   checkin: () => request.post('/game/checkin'),
   tasks: () => request.get('/game/tasks'),
   claim: (code) => request.post(`/game/tasks/${code}/claim`),
-  rank: (type = 'points') => request.get('/game/rank', { params: { type } })
+  rank: (type = 'points') => request.get('/game/rank', { params: { type } }),
+  // 积分明细：学生核对「总分是怎么来的」的入口
+  pointLogs: (limit = 50) => request.get('/game/points/logs', { params: { limit } })
 }
 
 /* ---------------- 错题本 ---------------- */
@@ -95,6 +97,8 @@ export const adminApi = {
   updateUserStatus: (id, status) => request.put(`/admin/users/${id}/status`, null, { params: { status } }),
   resetPassword: (id) => request.put(`/admin/users/${id}/reset-password`),
   deleteUser: (id) => request.delete(`/admin/users/${id}`),
+  /** 按积分流水重算总积分（对账兜底），返回 before / after / diff */
+  recalcPoints: (id) => request.put(`/admin/users/${id}/recalc-points`),
 
   vocabLevels: () => request.get('/admin/vocab/levels'),
   saveVocabLevel: (data) => request.post('/admin/vocab/levels', data),

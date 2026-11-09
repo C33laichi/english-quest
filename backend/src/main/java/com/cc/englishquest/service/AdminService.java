@@ -17,7 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 后台管理服务
@@ -35,6 +37,7 @@ public class AdminService {
     private final UserLessonMapper userLessonMapper;
     private final AiCallLogMapper aiCallLogMapper;
     private final StatsMapper statsMapper;
+    private final PointService pointService;
 
     /** 管理员「重置密码」后的默认密码，可由环境变量覆盖，仓库中不保留真实密码 */
     @Value("${app.admin.reset-default-password:}")
@@ -91,6 +94,29 @@ public class AdminService {
             throw BizException.badRequest("不能删除管理员账号");
         }
         userMapper.deleteById(id);
+    }
+
+    /**
+     * 按积分流水重算某个用户的总积分（对账兜底）。
+     *
+     * <p>正常情况下 `total_points` 与流水合计恒等，这个按钮点下去 diff 就是 0；
+     * 一旦出现漂移（手工改库、历史数据迁移、并发丢更新），它能把账拉回来。
+     * <p>返回改动前的值，是为了在界面上说清楚「改了没有、改了多少」——
+     * 只回一个「操作成功」等于没告诉管理员发生了什么。</p>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> recalcPoints(Long id) {
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            throw BizException.badRequest("用户不存在");
+        }
+        int before = user.getTotalPoints() == null ? 0 : user.getTotalPoints();
+        int after = pointService.recalcTotalPoints(id);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("before", before);
+        result.put("after", after);
+        result.put("diff", after - before);
+        return result;
     }
 
     /**

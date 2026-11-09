@@ -105,6 +105,8 @@ app:
     level-point: 10
     full-score-point: 20
     login-point: 5
+    # 每日打卡固定奖励（不随连续天数递增）
+    checkin-point: 5
     answer-daily-limit: 100
 
 logging:

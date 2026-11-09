@@ -7,7 +7,9 @@ import com.cc.englishquest.entity.PointLog;
 import com.cc.englishquest.entity.User;
 import com.cc.englishquest.mapper.PointLogMapper;
 import com.cc.englishquest.mapper.UserMapper;
+import com.cc.englishquest.vo.CheckinVO;
 import com.cc.englishquest.vo.LevelStepVO;
+import com.cc.englishquest.vo.PointLogVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,6 +48,16 @@ public class PointService {
 
     @Value("${app.point.login-point:5}")
     private int loginPoint;
+
+    /**
+     * 每日打卡固定奖励。
+     *
+     * <p>固定值，**不再随连续天数递增**。首页规则卡片写的是「打卡 +5 积分」，
+     * 若按连打天数发（第 1 天 1 分、第 2 天 2 分……），学生打卡后总积分只涨 1 分，
+     * 与文案直接矛盾。连续天数只作为鼓励性展示，不参与积分计算。</p>
+     */
+    @Value("${app.point.checkin-point:5}")
+    private int checkinPoint;
 
     @Value("${app.point.answer-daily-limit:100}")
     private int answerDailyLimit;
@@ -135,6 +147,71 @@ public class PointService {
                 .eq(PointLog::getBizId, bizId)) > 0;
     }
 
+    /**
+     * 积分明细（按时间倒序）。
+     *
+     * <p>之前系统只有「总积分」一个数字，学生看到总分和心里的预期不一致时，
+     * 没有任何地方能查到「哪一笔加了分、哪一笔没加」——
+     * 这就是「总分与明细对不上」最直接的成因：不是账错了，是无账可查。</p>
+     *
+     * @param limit 条数上限，夹在 1~200 之间，避免一次拖出整张流水表
+     */
+    public List<PointLogVO> logs(Long userId, int limit) {
+        int size = Math.min(Math.max(limit, 1), 200);
+        List<PointLog> rows = pointLogMapper.selectList(new LambdaQueryWrapper<PointLog>()
+                .eq(PointLog::getUserId, userId)
+                .orderByDesc(PointLog::getId)
+                .last("LIMIT " + size));
+        List<PointLogVO> result = new ArrayList<>(rows.size());
+        for (PointLog row : rows) {
+            PointLogVO vo = new PointLogVO();
+            vo.setId(row.getId());
+            vo.setType(row.getType());
+            vo.setTypeName(PointType.label(row.getType()));
+            vo.setChangePoints(row.getChangePoints());
+            vo.setRemark(row.getRemark());
+            vo.setCreateTime(row.getCreateTime());
+            result.add(vo);
+        }
+        return result;
+    }
+
+    /** 某用户的流水合计（对账用） */
+    public int sumLogs(Long userId) {
+        List<PointLog> rows = pointLogMapper.selectList(new LambdaQueryWrapper<PointLog>()
+                .eq(PointLog::getUserId, userId));
+        int sum = 0;
+        for (PointLog row : rows) {
+            sum += row.getChangePoints() == null ? 0 : row.getChangePoints();
+        }
+        return sum;
+    }
+
+    /**
+     * 以流水为准重算总积分 —— 对账兜底。
+     *
+     * <p>`t_user.total_points` 是流水的一个**缓存**，正常情况下两者必然相等
+     * （所有加分都走 {@link #addPoints}，同一事务里写流水 + 累加）。
+     * 但历史数据迁移、手工改库、并发丢更新等都可能让缓存漂移，
+     * 而一旦漂移，没有任何入口能把它拉回来。这个方法就是那个入口：
+     * 以 `SUM(point_log.change_points)` 覆盖总积分，幂等，可以随时点。</p>
+     *
+     * @return 重算后的总积分
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public int recalcTotalPoints(Long userId) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            return 0;
+        }
+        int sum = sumLogs(userId);
+        int before = user.getTotalPoints() == null ? 0 : user.getTotalPoints();
+        user.setTotalPoints(sum);
+        userMapper.updateById(user);
+        log.info("按流水重算积分：user={}，{} -> {}", userId, before, sum);
+        return sum;
+    }
+
     /** 等级换算：[等级, 当前等级起始积分, 下一等级所需积分] */
     public int[] levelInfo(int totalPoints) {
         int level = 1;
@@ -171,37 +248,48 @@ public class PointService {
     /**
      * 打卡：更新连续天数与最近学习日期
      *
-     * @return 打卡后连续天数
+     * @return 打卡后的连续天数 + 本次实发积分（见 {@link CheckinVO}）
      */
     @Transactional(rollbackFor = Exception.class)
-    public int checkin(Long userId) {
+    public CheckinVO checkin(Long userId) {
+        CheckinVO result = new CheckinVO();
         User user = userMapper.selectById(userId);
         if (user == null) {
-            return 0;
+            return result;
         }
         LocalDate today = LocalDate.now();
         LocalDate last = user.getLastStudyDate();
         int streak = user.getStreakDays() == null ? 0 : user.getStreakDays();
 
+        if (last != null && last.isEqual(today)) {
+            // 今日已打卡：天数与积分都不再变动，但要把当前状态回给前端，
+            // 免得按钮点下去什么都不发生（旧版这里直接 return，前端拿不到任何数字）
+            result.setStreakDays(streak == 0 ? 1 : streak);
+            result.setGainPoints(0);
+            result.setTotalPoints(user.getTotalPoints() == null ? 0 : user.getTotalPoints());
+            return result;
+        }
         if (last == null || last.isBefore(today.minusDays(1))) {
             streak = 1;
-        } else if (last.isEqual(today.minusDays(1))) {
+        } else {
             streak = streak + 1;
-        } else if (last.isEqual(today)) {
-            // 今日已打卡，不重复累加
-            return streak == 0 ? 1 : streak;
         }
         user.setStreakDays(streak);
         user.setLastStudyDate(today);
         userMapper.updateById(user);
 
-        // 连续打卡奖励：+N（上限 +10），每天只发一次
-        int reward = Math.min(streak, 10);
+        // 打卡奖励为固定值，不随连续天数变化（见 checkinPoint 字段注释）
         String bizId = "checkin-" + today;
+        int gain = 0;
         if (!exists(userId, PointType.CHECKIN, bizId)) {
-            addPoints(userId, reward, PointType.CHECKIN, bizId, "连续打卡第" + streak + "天");
+            gain = addPoints(userId, checkinPoint, PointType.CHECKIN, bizId, "每日打卡，连续第" + streak + "天");
         }
-        return streak;
+
+        User latest = userMapper.selectById(userId);
+        result.setStreakDays(streak);
+        result.setGainPoints(gain);
+        result.setTotalPoints(latest == null || latest.getTotalPoints() == null ? 0 : latest.getTotalPoints());
+        return result;
     }
 
     public int getAnswerPoint() {
@@ -218,6 +306,10 @@ public class PointService {
 
     public int getLoginPoint() {
         return loginPoint;
+    }
+
+    public int getCheckinPoint() {
+        return checkinPoint;
     }
 
     public int getDailyLimit() {

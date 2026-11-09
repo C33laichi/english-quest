@@ -23,6 +23,34 @@ public final class PointType {
     /** 每日任务奖励 */
     public static final String TASK = "TASK";
 
+    /**
+     * 类型的中文名。
+     *
+     * <p>放在这里而不是前端：明细列表、后台日志、导出都要显示同一套文案，
+     * 两处各写一份迟早会不一致。未知类型原样返回，方便以后新增类型时不至于显示空白。</p>
+     */
+    public static String label(String type) {
+        if (type == null) {
+            return "";
+        }
+        switch (type) {
+            case ANSWER:
+                return "答题得分";
+            case LEVEL:
+                return "通关奖励";
+            case FULL_SCORE:
+                return "满分奖励";
+            case LOGIN:
+                return "每日登录";
+            case CHECKIN:
+                return "每日打卡";
+            case TASK:
+                return "任务奖励";
+            default:
+                return type;
+        }
+    }
+
     private PointType() {
     }
 }

@@ -46,9 +46,9 @@
           </div>
           <div class="level-progress-text">
             <span v-if="isMaxLevel">已达到最高等级</span>
-            <span v-else>距下一级还差 {{ nextGap }} 分</span>
+            <span v-else>距「{{ nextLevelName }}」还差 {{ nextGap }} 分</span>
             <span v-if="!isMaxLevel">
-              {{ overview.currentLevelPoints ?? 0 }} / {{ overview.nextLevelPoints ?? 0 }}
+              {{ overview.totalPoints ?? 0 }} / {{ overview.nextLevelThreshold ?? 0 }}
             </span>
           </div>
         </div>
@@ -215,23 +215,34 @@ const loading = ref(true)
 const levels = computed(() => overview.value.levels || [])
 
 /*
- * 等级进度：后端下发的是「本段已得 / 本段所需」，两个数同分母，
- * 所以直接相除就是进度、相减就是还差多少。
- * 满级时 nextLevelPoints = -1（没有下一级）→ 进度按 100% 处理且不显示差值。
+ * 等级进度：累计口径。
+ *
+ * 后端下发 totalPoints 与 nextLevelThreshold（下一级门槛），两个数直接相除就是进度、
+ * 相减就是还差多少，和顶部「总积分」是同一个分子 —— 不会再出现
+ * 「总积分 113，等级却写 13 / 200」这种读起来像算错的展示。
+ * 满级时 nextLevelThreshold = -1 → 进度按 100% 处理且不显示差值。
  */
-const isMaxLevel = computed(() => (overview.value.nextLevelPoints ?? 0) < 0)
+const isMaxLevel = computed(() => (overview.value.nextLevelThreshold ?? -1) < 0)
 
 const levelPercent = computed(() => {
-  const cur = overview.value.currentLevelPoints ?? 0
-  const need = overview.value.nextLevelPoints ?? 0
+  if (isMaxLevel.value) return 100
+  const total = overview.value.totalPoints ?? 0
+  const need = overview.value.nextLevelThreshold ?? 0
   if (need <= 0) return 100
-  return Math.min(100, Math.round((cur / need) * 100))
+  return Math.min(100, Math.round((total / need) * 100))
 })
 
 const nextGap = computed(() => {
-  const cur = overview.value.currentLevelPoints ?? 0
-  const need = overview.value.nextLevelPoints ?? 0
-  return need > 0 ? Math.max(0, need - cur) : 0
+  if (isMaxLevel.value) return 0
+  const total = overview.value.totalPoints ?? 0
+  const need = overview.value.nextLevelThreshold ?? 0
+  return Math.max(0, need - total)
+})
+
+/** 下一级的称号（等级清单按等级升序下发，下标 = 当前等级即为下一条） */
+const nextLevelName = computed(() => {
+  const lv = overview.value.level ?? 1
+  return levels.value[lv]?.name || '下一级'
 })
 
 const doneTaskCount = computed(() => tasks.value.filter((t) => t.finished).length)
@@ -256,7 +267,20 @@ async function doCheckin() {
   checkinLoading.value = true
   try {
     const res = await gameApi.checkin()
-    ElMessage.success(`打卡成功，+${res.gainPoints ?? 5} 积分，连续 ${res.streakDays} 天`)
+    /*
+     * gainPoints 是后端算出来的**实发**分数，不能再用 `?? 5` 兜底：
+     * 今日已打卡或当天已达上限时它会是 0，兜底会把「一分没加」说成「+5」，
+     * 学生一加总分就发现对不上。
+     */
+    if (res.gainPoints > 0) {
+      ElMessage.success(`打卡成功，+${res.gainPoints} 积分，连续 ${res.streakDays} 天`)
+    } else {
+      ElMessage.info(`今天已经打过卡了，连续 ${res.streakDays} 天`)
+    }
+    // 打卡只涨分数，不动等级以外的数据，但仍走一次总览刷新，保证首页和侧栏同步
+    if (typeof res.totalPoints === 'number' && userStore.user) {
+      userStore.setUser({ ...userStore.user, totalPoints: res.totalPoints, streakDays: res.streakDays })
+    }
     await loadAll()
   } finally {
     checkinLoading.value = false
@@ -265,7 +289,10 @@ async function doCheckin() {
 
 async function claimTask(t) {
   const res = await gameApi.claim(t.code)
-  ElMessage.success(`领取成功，+${res.rewardPoints ?? t.rewardPoints} 积分`)
+  // 后端返回的是 gainPoints（实发），任务卡片上的 rewardPoints 是**标称**奖励；
+  // 触碰每日上限时两者不等，提示语必须说实发值，否则学生按标称累加就对不上账
+  const gain = res.gainPoints ?? res.rewardPoints ?? t.rewardPoints
+  ElMessage.success(`领取成功，+${gain} 积分`)
   await loadAll()
 }
 

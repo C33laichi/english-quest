@@ -29,9 +29,10 @@
         </div>
 
         <div class="stat-grid4">
-          <div class="mini-stat">
+          <!-- 点「总积分」打开明细：数字旁边就要有「可以点」的暗示，否则没人会点 -->
+          <div class="mini-stat stat-clickable" role="button" tabindex="0" @click="openLogs">
             <div class="mini-val">{{ userStore.user?.totalPoints ?? 0 }}</div>
-            <div class="mini-label">总积分</div>
+            <div class="mini-label">总积分 <span class="mini-more">明细 ›</span></div>
           </div>
           <div class="mini-stat">
             <div class="mini-val">{{ userStore.user?.streakDays ?? 0 }}</div>
@@ -95,14 +96,45 @@
       <br />
       湖南网络工程职业学院 · 信息工程学院
     </div>
+
+    <!--
+      积分明细抽屉。
+      学生看到「总积分」和心里预期不一致时，需要能查到每一笔的来源 ——
+      只给一个总数、不给账目，任何加减分都会显得像凭空发生的。
+    -->
+    <el-drawer v-model="logsVisible" title="积分明细" size="420px" append-to-body>
+      <div v-loading="logsLoading" class="log-body">
+        <div v-if="logs.length" class="log-sum">
+          最近 <b>{{ logs.length }}</b> 笔共
+          <b>{{ logsSum > 0 ? '+' : '' }}{{ logsSum }}</b> 分
+        </div>
+
+        <div v-for="l in logs" :key="l.id" class="log-row">
+          <div class="log-main">
+            <span class="chip gray log-type">{{ l.typeName }}</span>
+            <span class="log-remark">{{ l.remark || '—' }}</span>
+          </div>
+          <div class="log-side">
+            <b class="log-delta" :class="{ minus: l.changePoints < 0 }">
+              {{ l.changePoints > 0 ? '+' : '' }}{{ l.changePoints }}
+            </b>
+            <span class="log-time">{{ l.createTime }}</span>
+          </div>
+        </div>
+
+        <div v-if="!logsLoading && !logs.length" class="muted" style="padding:24px 0;text-align:center">
+          还没有积分记录，去答几道题吧
+        </div>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { authApi } from '@/api'
+import { authApi, gameApi } from '@/api'
 import { useUserStore } from '@/store/user'
 
 const router = useRouter()
@@ -110,6 +142,27 @@ const userStore = useUserStore()
 
 const form = reactive({ nickname: '', avatar: '' })
 const saving = ref(false)
+
+/* ---------------- 积分明细 ---------------- */
+const logsVisible = ref(false)
+const logsLoading = ref(false)
+const logs = ref([])
+
+/** 当前列出这几笔的合计。只统计已加载的部分，标题里写清是「最近 N 笔」，不冒充总分 */
+const logsSum = computed(() => logs.value.reduce((s, l) => s + (l.changePoints || 0), 0))
+
+async function openLogs() {
+  logsVisible.value = true
+  logsLoading.value = true
+  try {
+    logs.value = (await gameApi.pointLogs(50)) || []
+  } catch (e) {
+    logs.value = []
+    ElMessage.error('积分明细加载失败')
+  } finally {
+    logsLoading.value = false
+  }
+}
 
 const pwdRef = ref()
 const pwdForm = reactive({ oldPassword: '', newPassword: '', confirm: '' })
@@ -268,5 +321,91 @@ onMounted(async () => {
   .profile-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* ---------- 积分明细 ---------- */
+/* 「总积分」这一格可点：给出指针与轻微抬升，避免看起来和旁边静态数字一样 */
+.stat-clickable {
+  cursor: pointer;
+  transition: border-color var(--eq-dur) var(--eq-ease), transform var(--eq-dur) var(--eq-ease);
+}
+.stat-clickable:hover {
+  border-color: var(--eq-line);
+  transform: translateY(-1px);
+}
+.stat-clickable:focus-visible {
+  outline: 2px solid var(--eq-primary);
+  outline-offset: 2px;
+}
+.mini-more {
+  font-size: 11px;
+  color: var(--eq-primary);
+  opacity: 0.9;
+}
+
+.log-body {
+  min-height: 120px;
+}
+.log-sum {
+  margin-bottom: 14px;
+  padding: 8px 10px;
+  border-radius: var(--eq-radius-xs);
+  background: var(--eq-surface-sunken);
+  font-size: 12px;
+  color: var(--eq-text-sub);
+}
+.log-sum b {
+  color: var(--eq-text);
+}
+
+/* 一行一笔：左边「类型 + 说明」，右边「变动值 + 时间」 */
+.log-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 2px;
+  border-bottom: 1px solid var(--eq-border-soft);
+}
+.log-row:last-child {
+  border-bottom: none;
+}
+.log-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.log-type {
+  flex: none;
+  font-size: 11px;
+}
+.log-remark {
+  font-size: 13px;
+  color: var(--eq-text-sub);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.log-side {
+  flex: none;
+  text-align: right;
+}
+.log-delta {
+  display: block;
+  font-size: 15px;
+  color: var(--eq-primary);
+  font-variant-numeric: tabular-nums;
+}
+.log-delta.minus {
+  color: var(--eq-text-sub);
+}
+.log-time {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--eq-text-sub);
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
 }
 </style>

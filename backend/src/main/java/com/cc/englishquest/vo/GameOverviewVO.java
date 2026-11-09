@@ -18,14 +18,29 @@ public class GameOverviewVO {
     /** 等级称号 */
     private String levelName;
 
-    /** 当前等级区间内已获得的积分（totalPoints - 本段起点） */
+    /** 当前等级区间的起始积分（1 级 0 分、2 级 100 分……） */
+    private Integer levelBasePoints;
+
+    /**
+     * 下一级门槛（累计积分口径），满级时为 <b>-1</b>。
+     *
+     * <p>首页现在用「累计 / 门槛」展示等级进度：113 分显示 `113 / 300`，
+     * 与顶部「总积分 113」是同一个数，不会出现「总分 113 却只画了 13」的误解。
+     * 进度条按 totalPoints / nextLevelThreshold 计算，与文字同分母。</p>
+     */
+    private Integer nextLevelThreshold;
+
+    /** 当前等级区间内已获得的积分（totalPoints - 本段起点）——本段口径，非首页默认展示 */
     private Integer currentLevelPoints;
 
     /**
      * 当前等级区间升满所需的总积分（= 下一级门槛 - 本段起点）。
      *
      * <p>与 {@link #currentLevelPoints} <b>同分母</b>：进度 = cur / need，
-     * 「还差多少分」= need - cur。满级时为 <b>-1</b>，前端据此隐藏进度条。</p>
+     * 「还差多少分」= need - cur。满级时为 <b>-1</b>。</p>
+     *
+     * <p>这套「本段口径」保留给需要「本级进度」的场合（如等级说明卡），
+     * 首页主进度已改用 {@link #nextLevelThreshold} 的累计口径。</p>
      */
     private Integer nextLevelPoints;
 

@@ -35,13 +35,18 @@
               @click="choose(idx)"
             >
               <span class="option-key">{{ idx + 1 }}</span>
-              <span>{{ opt.value }}</span>
+              <span class="option-text">
+                <span v-if="splitPos(opt.value).pos" class="pos-tag">{{ splitPos(opt.value).pos }}</span
+                >{{ splitPos(opt.value).text }}
+              </span>
             </div>
           </template>
 
           <!-- 拼写题：直接敲字母 -->
           <template v-else>
-            <div class="quiz-stem">{{ q.hint || q.stem }}</div>
+            <div class="quiz-stem">
+              <span v-if="stemView.pos" class="pos-tag">{{ stemView.pos }}</span>{{ stemView.text }}
+            </div>
             <div v-if="q.phonetic" class="muted" style="margin-bottom:2px">/{{ q.phonetic }}/</div>
             <div class="quiz-hint">
               键入英文单词后按 <kbd>Enter</kbd> 提交
@@ -303,6 +308,25 @@ async function loadExplains() {
 let advancing = false
 
 const q = computed(() => questions.value[current.value - 1] || {})
+
+/*
+ * 词性拆分。
+ *
+ * 题库里的文本形如 `n. 记忆；回忆`、`adj./v. 醒着的；唤醒`，
+ * 词性单独渲染成小灰标、释义跟在后面，扫读时先看词性再看意思。
+ * 没有词性前缀的文本原样返回，不做任何猜测 ——
+ * 早期的题库全是裸释义，硬套规则会把「一小部分」这类释义切坏。
+ */
+const POS_PREFIX = /^([a-z]+\.(?:\s*\/\s*[a-z]+\.)*)\s+([\s\S]*)$/
+
+function splitPos(text) {
+  const raw = String(text || '').trim()
+  const m = POS_PREFIX.exec(raw)
+  return m ? { pos: m[1], text: m[2] } : { pos: '', text: raw }
+}
+
+/** 拼写题的题干：有 hint 用 hint（音标），否则用释义 */
+const stemView = computed(() => splitPos(q.value.hint || q.value.stem))
 const isLast = computed(() => current.value >= questions.value.length)
 const curAnswer = computed(() => answers.value[current.value - 1]?.userAnswer || '')
 const answeredCount = computed(() => answers.value.filter((a) => a.userAnswer).length)

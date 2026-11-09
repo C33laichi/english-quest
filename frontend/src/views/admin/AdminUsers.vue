@@ -56,7 +56,7 @@
           <span class="muted">{{ (row.createTime || '').replace('T', ' ').slice(0, 16) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="230" fixed="right">
+      <el-table-column label="操作" width="310" fixed="right">
         <template #default="{ row }">
           <el-button
             size="small" :type="row.status === 1 ? 'warning' : 'success'" link
@@ -65,6 +65,8 @@
             {{ row.status === 1 ? '禁用' : '启用' }}
           </el-button>
           <el-button size="small" type="primary" link @click="resetPwd(row)">重置密码</el-button>
+          <!-- 对账：以积分流水重算总分，正常情况下 diff 为 0 -->
+          <el-button size="small" type="info" link @click="recalcPoints(row)">重算积分</el-button>
           <el-button size="small" type="danger" link :disabled="row.role === 'ADMIN'" @click="removeUser(row)">
             删除
           </el-button>
@@ -181,6 +183,27 @@ async function removeUser(row) {
   )
   await adminApi.deleteUser(row.id)
   ElMessage.success('已删除')
+  load()
+}
+
+/**
+ * 按积分流水重算总分（对账兜底）。
+ * 正常情况下 diff = 0，只回一句「已重算」等于没说清发生了什么，
+ * 所以把「改前 → 改后」如实摆出来。
+ */
+async function recalcPoints(row) {
+  const who = row.nickname || row.username
+  await ElMessageBox.confirm(
+    `将按积分流水重新计算「${who}」的总积分。正常情况不会有任何变化，确定继续？`,
+    '重算积分',
+    { confirmButtonText: '重算', cancelButtonText: '取消', type: 'warning' }
+  )
+  const res = await adminApi.recalcPoints(row.id)
+  if (res.diff === 0) {
+    ElMessage.success(`账目一致：${res.before} 分，无需修正`)
+  } else {
+    ElMessage.warning(`已修正：${res.before} → ${res.after} 分（差 ${res.diff}）`)
+  }
   load()
 }
 

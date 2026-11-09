@@ -3,7 +3,9 @@ package com.cc.englishquest.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cc.englishquest.entity.User;
 import com.cc.englishquest.mapper.UserMapper;
+import com.cc.englishquest.vo.CheckinVO;
 import com.cc.englishquest.vo.GameOverviewVO;
+import com.cc.englishquest.vo.PointLogVO;
 import com.cc.englishquest.vo.RankVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,9 +33,11 @@ public class GameService {
         vo.setTotalPoints(total);
         vo.setLevel(levelInfo[0]);
         vo.setLevelName(pointService.levelName(levelInfo[0]));
-        // 区间长度制：cur = 本段内已得，need = 本段升级所需的总量（= 下一级门槛 - 本段起点）。
-        // 这样前端只需 cur / need 即得进度，(need - cur) 即「还差多少」，两个数天然同分母，
-        // 不会出现「分子大于分母」。满级时 need = -1，前端据此隐藏进度条。
+        // 累计口径（首页默认展示）：113 分 → 113 / 300，与顶部「总积分」同一个数。
+        // 满级时 nextLevelThreshold = -1，前端据此把进度条按 100% 处理并隐藏差值。
+        vo.setLevelBasePoints(levelInfo[1]);
+        vo.setNextLevelThreshold(levelInfo[2]);
+        // 区间长度制（本段口径，保留）：cur = 本段内已得，need = 下一级门槛 - 本段起点。
         vo.setCurrentLevelPoints(total - levelInfo[1]);
         vo.setNextLevelPoints(levelInfo[2] < 0 ? -1 : levelInfo[2] - levelInfo[1]);
         vo.setStreakDays(user.getStreakDays() == null ? 0 : user.getStreakDays());
@@ -47,8 +51,13 @@ public class GameService {
     }
 
     /** 打卡 */
-    public int checkin(Long userId) {
+    public CheckinVO checkin(Long userId) {
         return pointService.checkin(userId);
+    }
+
+    /** 积分明细（按时间倒序） */
+    public List<PointLogVO> pointLogs(Long userId, int limit) {
+        return pointService.logs(userId, limit);
     }
 
     /** 排行榜：type = points（积分榜） / streak（连续打卡榜） */

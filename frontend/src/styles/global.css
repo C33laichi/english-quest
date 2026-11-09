@@ -1141,6 +1141,23 @@ kbd {
   margin: 0 0 6px;
 }
 
+/*
+ * 题干里的词性标签。
+ * 题干是 30px 的标题字，通用 .pos-tag（12px、基线对齐）嵌进来会缩成一个小点、
+ * 还掉到字底下去，看着像错字。这里抬高字号、改成顶部对齐，
+ * 让它读起来是「释义前面的一个小标记」，而不是正文的一部分。
+ */
+.quiz-stem .pos-tag {
+  margin-right: 10px;
+  padding: 2px 7px;
+  font-size: 14px;
+  line-height: 1.35;
+  vertical-align: text-top;
+  letter-spacing: 0;
+  position: relative;
+  top: 3px;
+}
+
 .quiz-hint {
   font-size: 12.5px;
   color: var(--eq-text-mute);
@@ -1181,6 +1198,40 @@ kbd {
   border-color: var(--eq-primary);
   background: var(--eq-primary-soft);
   box-shadow: var(--eq-glow);
+}
+
+/*
+ * 选项文字块：词性小标 + 释义。
+ * 单独包一层是为了不破坏 .option 的 flex 布局 ——
+ * 若把词性当成 .option 的第三个子元素，13px 的 gap 会把词性和释义拉得很开。
+ */
+.option-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.45;
+}
+
+/*
+ * 词性标签（n. / v. / adj./v.）。
+ * 等宽斜体 + 主题色淡底：它是辅助信息，不该跟释义抢视线，
+ * 但也不能淡到需要凑近看 —— 学生得能一眼分清 adj. 和 adv.。
+ * 用主题色而不是灰色：灰色在浅色主题下几乎和卡片底同色，标签会「消失」。
+ */
+.pos-tag {
+  display: inline-block;
+  margin-right: 7px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--eq-primary-soft);
+  border: 1px solid transparent;
+  color: var(--eq-primary);
+  font-family: var(--eq-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12px;
+  font-weight: 600;
+  font-style: italic;
+  line-height: 1.5;
+  vertical-align: 1px;
+  white-space: nowrap;
 }
 
 .option.correct {

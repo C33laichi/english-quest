@@ -12,7 +12,7 @@
     width="460px"
     align-center
     append-to-body
-    :show-close="false"
+    :show-close="true"
     :close-on-click-modal="false"
     destroy-on-close
     class="celebrate-dialog"
@@ -33,6 +33,13 @@
         <el-button class="btn-primary" @click="close('back')">返回关卡</el-button>
         <el-button class="btn-ghost" @click="close('retry')">再来一次</el-button>
       </div>
+
+      <!--
+        右上角的 × 是唯一「只收弹窗、不切页」的出口：
+        下面两个按钮都会 emit 出去跳路由，弹窗一关学生就被带走，
+        最后一关的错题回顾（就在成绩页下方）再也看不到了。
+      -->
+      <div class="celebrate-tip">点右上角 × 关闭，可留在本页继续看错题回顾</div>
     </div>
   </el-dialog>
 </template>
@@ -122,6 +129,13 @@ function confettiStyle(n) {
   margin-top: 20px;
 }
 
+.celebrate-tip {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--eq-text-sub);
+  opacity: 0.85;
+}
+
 /* ---------- 纸屑：一次性洒落，不做循环 ---------- */
 .confetti {
   position: absolute;
@@ -179,9 +193,39 @@ function confettiStyle(n) {
   padding: 26px 24px 22px;
   border-radius: var(--eq-radius);
 }
+
+/*
+ * 标题区压成 0 高，但**不能 display:none** ——
+ * 右上角的 × 就长在这个容器里，整块藏掉会连关闭按钮一起消失，
+ * 而 × 恰恰是这个弹窗唯一「只收弹窗、不跳页」的出口。
+ * 压成 0 高之后，绝对定位的 × 仍然浮在卡片右上角。
+ */
 .celebrate-dialog .el-dialog__header {
-  display: none;
+  height: 0;
+  padding: 0;
+  margin: 0;
 }
+
+/* × 收进卡片内边距里，别贴着圆角 */
+.celebrate-dialog .el-dialog__headerbtn {
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  transition: background var(--eq-dur) var(--eq-ease);
+}
+.celebrate-dialog .el-dialog__headerbtn:hover {
+  background: var(--eq-surface-sunken);
+}
+.celebrate-dialog .el-dialog__headerbtn .el-dialog__close {
+  font-size: 17px;
+  color: var(--eq-text-sub);
+}
+.celebrate-dialog .el-dialog__headerbtn:hover .el-dialog__close {
+  color: var(--eq-text);
+}
+
 .celebrate-dialog .el-dialog__body {
   padding: 0;
 }

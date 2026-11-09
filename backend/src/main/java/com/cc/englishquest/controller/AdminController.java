@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 后台管理（仅 ADMIN 角色可访问，鉴权由拦截器统一处理）
@@ -53,6 +54,17 @@ public class AdminController {
     public Result<Void> resetPassword(@PathVariable Long id) {
         adminService.resetPassword(id);
         return Result.success();
+    }
+
+    /**
+     * 按积分流水重算总积分。
+     *
+     * <p>返回 before / after / diff 三个数：正常情况下 diff 为 0（说明账本来是平的），
+     * 不为 0 就说明这一行的总分确实漂移过，页面上要如实告诉管理员改了多少。</p>
+     */
+    @PutMapping("/users/{id}/recalc-points")
+    public Result<Map<String, Object>> recalcPoints(@PathVariable Long id) {
+        return Result.success(adminService.recalcPoints(id));
     }
 
     @DeleteMapping("/users/{id}")

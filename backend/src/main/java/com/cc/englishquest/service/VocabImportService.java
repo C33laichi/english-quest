@@ -28,6 +28,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * 词汇题库批量导入。
@@ -71,7 +72,7 @@ public class VocabImportService {
     /** 必需列：内部字段名 -> 给人看的列名（顺序即提示语里的顺序） */
     private static final Map<String, String> REQUIRED_COLS = new LinkedHashMap<>();
 
-    private static final String OPTIONAL_HINT = "（可选列：音标、题型、选项A~D、正确答案、解析）";
+    private static final String OPTIONAL_HINT = "（可选列：音标、词性、题型、选项A~D、正确答案、解析）";
 
     static {
         alias("word", "word");
@@ -87,6 +88,12 @@ public class VocabImportService {
 
         alias("phonetic", "phonetic");
         alias("音标", "phonetic");
+
+        // 词性：可选的独立列。填了会把前缀拼到「中文释义」前面（n. 记忆；回忆），
+        // 拼写题题干与选择题选项都靠这个前缀显示词性，缺了就只能看到裸释义。
+        alias("pos", "pos");
+        alias("词性", "pos");
+        alias("partofspeech", "pos");
 
         alias("type", "type");
         alias("题型", "type");
@@ -119,6 +126,32 @@ public class VocabImportService {
 
     private static void alias(String key, String field) {
         HEADER_ALIAS.put(key, field);
+    }
+
+    /** 释义是否已经带词性前缀（n. / adj./v. / prep. …） */
+    private static final Pattern POS_PREFIX = Pattern.compile("^[a-zA-Z]+\\.(\\s*/\\s*[a-zA-Z]+\\.)*\\s+");
+
+    /**
+     * 把「词性」列拼到中文释义前面，得到 {@code n. 记忆；回忆} 这种形式。
+     *
+     * <p>题干与选项都靠这个前缀显示词性，所以这一步必须在入库前做完 ——
+     * 前端只负责把前缀拆出来渲染成小灰标，不猜测任何东西。</p>
+     *
+     * <p>三种情况原样返回：没填词性、释义为空、释义里已经写过词性（避免叠成 {@code n. n. 记忆}）。
+     * 只给了 {@code n} 没带点时补一个点，老师填表时少敲一个句号不该变成数据缺陷。</p>
+     */
+    private static String withPos(String meaning, String pos) {
+        if (meaning == null || meaning.isBlank() || pos == null || pos.isBlank()) {
+            return meaning;
+        }
+        if (POS_PREFIX.matcher(meaning).find()) {
+            return meaning;
+        }
+        String p = pos.trim();
+        if (!p.endsWith(".")) {
+            p = p + ".";
+        }
+        return p + " " + meaning.trim();
     }
 
     private final VocabQuestionMapper vocabQuestionMapper;
@@ -202,7 +235,7 @@ public class VocabImportService {
         Map<String, Integer> col = SheetReader.mapHeader(grid.get(headerIdx), HEADER_ALIAS, REQUIRED_COLS, OPTIONAL_HINT);
 
         // --- 数据行 ---
-        List<Object[]> raw = new ArrayList<>();   // {rowNo, word, meaning, phonetic, typeCell, a, b, c, d, ans, ana}
+        List<Object[]> raw = new ArrayList<>();   // {rowNo, word, meaning, phonetic, typeCell, a, b, c, d, ans, ana, pos}
         for (int i = headerIdx + 1; i < grid.size(); i++) {
             List<String> cells = grid.get(i);
             String word = SheetReader.cell(cells, col.get("word"));
@@ -216,7 +249,8 @@ public class VocabImportService {
                     SheetReader.cell(cells, col.get("type")),
                     SheetReader.cell(cells, col.get("optionA")), SheetReader.cell(cells, col.get("optionB")),
                     SheetReader.cell(cells, col.get("optionC")), SheetReader.cell(cells, col.get("optionD")),
-                    SheetReader.cell(cells, col.get("answer")), SheetReader.cell(cells, col.get("analysis"))
+                    SheetReader.cell(cells, col.get("answer")), SheetReader.cell(cells, col.get("analysis")),
+                    SheetReader.cell(cells, col.get("pos"))
             });
         }
 
@@ -264,6 +298,11 @@ public class VocabImportService {
             String od = ((String) r[8]).trim();
             String ansCell = ((String) r[9]).trim();
             String analysis = ((String) r[10]).trim();
+            String posCell = ((String) r[11]).trim();
+
+            // 「词性」是可选列：填了才拼到释义前，没填就保持原样。
+            // 只在释义本身还没带词性时才拼，避免表格里已经写了「n. 记忆」又被叠一层。
+            meaning = withPos(meaning, posCell);
 
             // 1) 必填
             if (word.isEmpty()) {

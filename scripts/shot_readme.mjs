@@ -24,6 +24,7 @@ const BASE = 'http://127.0.0.1:5173'
 const OUT_DIR = 'D:/WorkBuddy/WorkPlace/english-quest/screenshots'
 const USER = 'student'
 const PASS = (process.env.EQ_PASS || '')
+const PASS_ADMIN = (process.env.EQ_ADMIN_PASS || '')
 const W = 1440
 const H = 900
 
@@ -37,6 +38,8 @@ const JOBS = [
   { key: '09', route: '/profile', theme: 'light', file: '09-个人中心.png' },
   // 游戏中心顶部横幅会显示等级/总积分/排行榜，数字要跟其它几张对得上才不显得矛盾
   { key: '05', route: '/game', theme: 'light', file: '05-游戏中心.png' },
+  // 后台用户列表 2026-11 新增了「重算积分」按钮，操作列也加宽了，旧图缺这一列
+  { key: '16', route: '/admin/users', theme: 'light', file: '16-用户管理.png', user: 'admin', pass: PASS_ADMIN },
 ]
 
 function arg(name, def = null) {
@@ -93,30 +96,33 @@ async function main() {
   await send(ws, 'Page.enable')
   await send(ws, 'Runtime.enable')
 
-  // 1. 登录
+  // 1. 先把站点加载起来（后面每个 job 都在这上面 fetch 登录取 token）
   await send(ws, 'Page.navigate', { url: `${BASE}/` })
   await sleep(2200)
-  const ok = await ev(`
-    (async () => {
-      const r = await fetch('/api/auth/login', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: '${USER}', password: '${PASS}' })
-      });
-      const b = await r.json();
-      if (b.code !== 200) return 'FAIL ' + b.msg;
-      const d = b.data;
-      localStorage.setItem('eq_token', d.token);
-      localStorage.setItem('eq_user', JSON.stringify({
-        userId: d.userId, username: d.username, nickname: d.nickname,
-        role: d.role, avatar: d.avatar, totalPoints: d.totalPoints, streakDays: d.streakDays
-      }));
-      return 'OK';
-    })()
-  `)
-  if (ok !== 'OK') throw new Error('登录失败：' + ok)
-  console.log('登录成功')
 
   for (const job of jobs) {
+    // 每个 job 按自己的账号登录（16 是管理员，其余是学生）
+    const u = job.user || USER
+    const pw = job.pass || PASS
+    const ok = await ev(`
+      (async () => {
+        const r = await fetch('/api/auth/login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: '${u}', password: '${pw}' })
+        });
+        const b = await r.json();
+        if (b.code !== 200) return 'FAIL ' + b.msg;
+        const d = b.data;
+        localStorage.setItem('eq_token', d.token);
+        localStorage.setItem('eq_user', JSON.stringify({
+          userId: d.userId, username: d.username, nickname: d.nickname,
+          role: d.role, avatar: d.avatar, totalPoints: d.totalPoints, streakDays: d.streakDays
+        }));
+        return 'OK role=' + d.role;
+      })()
+    `)
+    if (String(ok).indexOf('OK') !== 0) throw new Error(`登录失败(${u})：` + ok)
+
     // 2. 切 hash（不整页跳转，绕开深链兜底）
     await ev(`location.hash = '#${job.route}'; 'ok'`)
     await sleep(300)
@@ -134,7 +140,7 @@ async function main() {
     const s = JSON.parse(st)
     if (s.hash !== `#${job.route}`) throw new Error(`路由没停在 ${job.route}，实际 ${s.hash}`)
     if (job.theme === 'dark' && s.theme !== 'dark') throw new Error('深色主题没生效：' + s.theme)
-    console.log(`  ${job.file}  hash=${s.hash} theme=${s.theme}`)
+    console.log(`  ${job.file}  hash=${s.hash} theme=${s.theme} user=${u}`)
 
     const shot = await send(ws, 'Page.captureScreenshot', {
       format: 'png', captureBeyondViewport: false,

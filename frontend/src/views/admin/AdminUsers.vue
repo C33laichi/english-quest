@@ -17,7 +17,7 @@
 
     <el-table :data="list" v-loading="loading" stripe style="width:100%">
       <el-table-column prop="id" label="ID" width="70" />
-      <el-table-column label="用户" min-width="180">
+      <el-table-column label="用户" min-width="160">
         <template #default="{ row }">
           <div style="display:flex;align-items:center;gap:8px">
             <div class="avatar" style="width:28px;height:28px;font-size:12px">
@@ -30,33 +30,33 @@
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="角色" width="100">
+      <el-table-column label="角色" width="90">
         <template #default="{ row }">
           <el-tag :type="row.role === 'ADMIN' ? 'warning' : 'info'" size="small">
             {{ row.role === 'ADMIN' ? '管理员' : '学生' }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="totalPoints" label="积分" width="90" sortable />
-      <el-table-column prop="streakDays" label="连续天数" width="100" />
-      <el-table-column prop="lastStudyDate" label="最近学习" width="120">
+      <el-table-column prop="totalPoints" label="积分" width="80" sortable />
+      <el-table-column prop="streakDays" label="连续天数" width="90" />
+      <el-table-column prop="lastStudyDate" label="最近学习" width="110">
         <template #default="{ row }">
           <span class="muted">{{ row.lastStudyDate || '暂无' }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="状态" width="90">
+      <el-table-column label="状态" width="80">
         <template #default="{ row }">
           <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
             {{ row.status === 1 ? '正常' : '禁用' }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="注册时间" width="170">
+      <el-table-column label="注册时间" width="145">
         <template #default="{ row }">
           <span class="muted">{{ (row.createTime || '').replace('T', ' ').slice(0, 16) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="310" fixed="right">
+      <el-table-column label="操作" width="265" fixed="right">
         <template #default="{ row }">
           <el-button
             size="small" :type="row.status === 1 ? 'warning' : 'success'" link

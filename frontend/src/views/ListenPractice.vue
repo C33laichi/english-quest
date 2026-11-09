@@ -97,7 +97,7 @@
             ⚠️ 浏览器拦截了这次播放。请点上方「播放发音」，或按 <kbd>Ctrl</kbd>+<kbd>Space</kbd>。
           </div>
           <div v-else-if="audioNotice === 'missing'" class="audio-warn">
-            ⚠️ 本句音频加载失败。请确认已运行 <code>python scripts/gen_listen_audio.py</code> 生成音频，或直接按 <kbd>Ctrl</kbd>+<kbd>;</kbd> 查看答案。
+            ⚠️ 本句音频加载失败。请确认 <code>frontend/public/audio/listen/</code> 下有对应音频，或直接按 <kbd>Ctrl</kbd>+<kbd>;</kbd> 查看答案。
           </div>
 
           <!-- ---------- 判分面板 ---------- -->

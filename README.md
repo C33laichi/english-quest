@@ -174,7 +174,6 @@ english-quest/
 │       ├── styles/          # 全局样式与设计变量
 │       └── views/           # 学生端 13 页 + 后台 5 页
 ├── sql/                     # 数据库脚本（建表 + 初始化数据）
-├── scripts/                 # 数据/音频生成脚本、测试脚本
 └── screenshots/             # 页面截图
 ```
 
@@ -217,16 +216,9 @@ mysql -uroot -p < sql/05_init_listen.sql   # 听力：建 2 张表 + 6 关 / 150
 150 句听力语料的 mp3 **已随仓库一起提供**（`frontend/public/audio/listen/`，共约 3.3 MB），
 克隆下来即可使用，**听力关卡不需要任何额外步骤**。
 
-只有需要**重新生成**时才跑（换音色、改语料、音频损坏）：
-
-```bash
-pip install edge-tts
-python scripts/gen_listen_audio.py
-```
-
-脚本会调用微软 Edge 的 Neural 语音（`en-US-AriaNeural`）把 150 句合成 mp3，
-输出到 `frontend/public/audio/listen/{句子ID}.mp3`。
-支持断点续传：已存在的文件会跳过，可反复执行。
+需要**重新生成**时（换音色、改语料、音频损坏），按 `{句子ID}.mp3`
+命名重新合成到这个目录即可；当时的生成工具用 edge-tts 的
+`en-US-AriaNeural`，同样不入库。
 
 > 为什么预生成音频而不是运行时合成：听写的答案就是句子本身。
 > 如果让浏览器实时朗读，就必须把英文原文下发到前端，答案会暴露在网络响应与 DOM 中，
@@ -314,10 +306,11 @@ cd ../backend && mvn package -DskipTests     # 产物 target/english-quest.jar�
 > ⚠️ **只把 `dist` 丢给普通静态服务器会打不开页面。** 前端请求走相对路径 `/api`，
 > 靠的是 vite dev server 的代理转发到 8090 —— 而**代理只在 `npm run dev` 时存在**。
 > 一旦用静态服务器（例如 `npx serve`）托管 `dist`，`/api` 会全部 404、页面一片空白。
-> 请改用仓库自带的零依赖启动器（托管 `dist` + 把 `/api` 反代到 8090）：
+> 预览构建产物请用 `npm run preview` —— `vite.config.js` 里 `preview.proxy`
+> 与 dev 同源，同样把 `/api` 转到 8090：
 >
 > ```bash
-> node scripts/serve_dist.mjs            # 默认 http://127.0.0.1:5174
+> npm run build && npm run preview       # 默认 http://127.0.0.1:5174
 > ```
 
 **对方拿到后**：装 JDK 17 + MySQL 8 + Node 18 → 导入 `sql/*.sql` →
@@ -336,7 +329,7 @@ cd ../backend && mvn package -DskipTests     # 产物 target/english-quest.jar�
 > 2. **`target/` 尽量别一起打包**（fat jar 约 50MB，且可能夹带上一条说的旧配置）；
 >    真要给 jar，就用**重新打包后**的那个。
 >
-> 交付前跑一次 `node scripts/ai_local_mode_check.mjs`：25 项全过 = 四项 AI 能力都在离线生成。
+> 交付前确认四项 AI 能力返回的 `source` 都是 `MOCK` —— 即命中本地生成短路、一次 HTTP 都没发。
 
 ---
 
@@ -349,126 +342,33 @@ cd ../backend && mvn package -DskipTests     # 产物 target/english-quest.jar�
 
 ---
 
-## 九、验证脚本
+## 九、验证情况
 
-```bash
-# 后端主链路接口回归（47 项断言：认证/词汇/语法/游戏机制/错题/AI/看板/后台）
-python scripts/smoke_test.py
+开发期做过一轮完整回归，**验证脚本本身不随仓库提供** —— 它们驱动本机 Chrome、
+连本机数据库、按本机路径截图，对克隆者没有复用价值，留着只会误导。
+这里只记录当时验证到的规模与结论。
 
-# 听力听写模块接口回归（29 项断言：模式差异/判分口径/结算/错题/任务/鉴权）
-python scripts/smoke_listen.py
+| 验证项 | 规模 | 覆盖 |
+| --- | --- | --- |
+| 后端主链路接口 | 47 项断言 | 认证 / 词汇 / 语法 / 游戏机制 / 错题 / AI / 看板 / 后台 |
+| 听力听写接口 | 29 项断言 | 模式差异 / 判分口径 / 结算 / 错题 / 任务 / 鉴权 |
+| 前端端到端 | 18 个页面 + 32 项键盘断言 | 真实 Chrome 渲染 + 真实按键派发 |
+| 错题「针对性讲解」 | 21 项断言 | 讲解跟着所选错项走 / 换选项换讲解 / 二次命中缓存 |
+| AI 练习接口 | 19 项断言 | 配额不限次数 / 词汇串烧 / 语法拓展 / 归属校验 |
+| 「无 Key 交付模式」 | 25 项断言 | 四项 AI 能力的 `source` 必须严格等于 `MOCK` |
+| 界面缺陷修复 | 34 项断言 | 主题翻转 / 横幅居中 / 等级清单 / 页脚 |
+| 首页等级数据 + 渲染 | 16 项 + 6×2 项 | 分子不大于分母 / 进度条宽度真的等于 `cur ÷ need` |
+| 主题回归 | 57 项断言 | 首屏主题 / 刷新持久化 / 对比度 / 逐页漏白 |
+| 音频行为 | 12 项断言 | 进入与切句都不自动播放、手动播放仍可用 |
 
-# 前端端到端校验（18 个页面 + 键盘交互，真实 Chrome 渲染 + 真实按键派发 + 自动截图）
-node scripts/e2e_check.mjs
+两个最容易在答辩现场翻车的点，已做成可重复执行的检查项：**四项 AI 能力在无 Key
+时必须走本地生成（`source == MOCK`，一次 HTTP 都没发）**，以及**积分幂等与每日上限
+被触发时不重复加分**。接口类脚本都可反复执行 —— 把「幂等保护命中」「已达上限」
+识别为正常结果，而不是误报失败。
 
-# 语法关头部题数显示回归（讲义页 / 答题中第 1、2 题三态断言 + 截图）
-node scripts/shot_grammar_count.mjs
+### 键盘可完成整关作答
 
-# 语法关错题回顾回归（断言显示选项内容而非 A/B/C/D + 截图）
-node scripts/shot_grammar_wrong.mjs
-
-# 错题「针对性讲解」接口回归（21 项：讲解跟着所选错项走 / 换选项换讲解 /
-# 未命中生成 → 二次命中缓存 / 选对时拒答 / 参数校验 / 两套配额可读）
-# 「题号 + 错选」是**动态挑冷键**的，因此可反复执行（写死键第二遍必然误报）
-node scripts/ai_explain_check.mjs
-
-# 错题「针对性讲解」页面回归（真实浏览器：制造确定错选 → 等讲解落定 →
-# 断言每条都提到所选错项、与通用解析不同、底色随主题变深 + 截图）
-node scripts/shot_wrong_explain.mjs 3 dark     # 深色
-node scripts/shot_wrong_explain.mjs 3 light    # 浅色
-
-# AI 练习接口回归（19 项：配额 -1 不限次数 / 词汇多选串成短文 /
-# 语法错题拓展考点 / 归属与模块校验）
-node scripts/ai_extra_check.mjs
-
-# 「无 Key 交付模式」验证（25 项）：四项 AI 能力（同型题 / 错题讲解 / 单词串烧 /
-# 语法拓展）的 source 必须严格等于 MOCK —— 即命中 isMock() 短路、一次 HTTP 都没发。
-# 错题讲解会先挑一个 cached=false 的冷键，确保是"本次现生成"而非历史缓存。
-# 断网 / 答辩现场无网 / 打包送人前的必备体检；谁把 Key 填回去这里立刻报红
-node scripts/ai_local_mode_check.mjs
-
-# 6 项界面缺陷修复的浏览器回归（34 项）：
-#   侧栏与首页横幅随主题翻转 / 横幅数值与标签居中 / 等级问号悬浮 6 级清单 /
-#   AI 练习无次数限制 / 词汇多选串烧 + 语法拓展 / 个人中心「关于」底部页脚
-# 「浅色还是深色」一律 clip 截真实像素取众数亮度，不读半透明的计算样式
-node scripts/ui6_check.mjs
-
-# 音频发声审计（零断言，纯诊断）：hook 掉 HTMLMediaElement.play 与
-# speechSynthesis.speak，把每次调用的**调用栈**打出来，并对照两种浏览器
-# 自动播放策略各跑四遍：进关卡 / 切下一句 / 手动 Ctrl+Space / 播放中退出。
-# 用来回答「我没点播放，声音怎么自己出来了」这类问题
-node scripts/diag_audio.mjs
-node scripts/diag_audio.mjs --loose          # 只跑宽松策略
-
-# 音频行为回归（12 项）：听力页进入与切句都不许自动播放、手动播放仍可用；
-# 错题本朗读按钮读对内容（词汇=单词 / 听力=英文原句 / 语法题干抹平空位）、再点会停
-node scripts/audio_check.mjs
-
-# 首页等级进度数据自洽性（16 项）：level 与门槛表一致 /
-#   cur = 总分 - 本段起点 / need = 本段所需且 cur <= need / 进度落在 0~100 /
-#   未满级不出现「还差 0 分」/ rankNo 与排行榜交叉核对
-node scripts/overview_check.mjs
-
-# 首页等级进度**渲染**回归（6 项 × 浅深双主题）：不出现「182 / 118」这种分子大于分母、
-#   不出现「距下一级还差 0 分」、进度条宽度真的等于 cur / need
-node scripts/home_level_ui_check.mjs light
-node scripts/home_level_ui_check.mjs dark
-
-# 题库解析质量体检（量化「解析是否解释学生可能选错的干扰项」，离线跑，不连数据库服务）
-python scripts/audit_analysis.py
-
-# 动态参数路由回归（点 Day3 是否真的进 Day3，不整页刷新）
-node scripts/repro_grammar_day.mjs
-
-# 讲义渲染文本诊断（抓某天全部讲义条目 + 可疑字符扫描 + 截图）
-node scripts/diag_grammar_text.mjs 3
-
-# 界面主题回归（57 项：首屏主题 / 头像菜单 / 切深色 / 刷新持久化 /
-# 跟随系统 / 深色对比度 / 逐页漏白 / ECharts 重绘 + 浅深成对截图）
-node scripts/theme_check.mjs
-
-# 深色主题「漏白」扫描（遍历所有控件，找出漏用 token 的浅色方块）
-node scripts/dark_leak_scan.mjs
-
-# 同上，但走后台账号与后台路由
-EQ_USER=admin EQ_PASS=$APP_ADMIN_PASSWORD node scripts/dark_leak_scan.mjs "/admin/dashboard,/admin/users,/admin/vocab,/admin/grammar"
-
-# 配色体检（WCAG 对比度 + 热力图色带相邻档亮度均匀度，改色前先跑）
-python scripts/theme_contrast.py
-
-# 截图像素采样（零依赖解 PNG，定量判定某张截图到底是深色还是浅色）
-# 缩略图肉眼判断极不可靠，怀疑某张截图"没变深"时用它，别靠眼睛
-node scripts/png_probe.mjs screenshots/36-主题-深色-首页.png 0.5,0.55 0.8,0.6
-```
-
-### 语法讲义数据修复
-
-`sql/03_init_grammar.sql` 由 `scripts/gen_grammar_sql.py` 从上游
-`grammar-quest/js/data_raw.json`（PDF 解析产物）生成。该源文件存在
-**跨句拼接残段 / `U+0000` 空字符 / 个别笔误**，会一路穿透到数据库和页面。
-
-修复用：
-
-```bash
-# 只检查，列出将要修的内容（不写文件）
-python scripts/fix_grammar_data.py --check
-
-# 执行修复：备份源数据 → 写回 → 重新生成 SQL
-python scripts/fix_grammar_data.py
-
-# 再把 SQL 重新导入数据库
-mysql -h ::1 -u root -p english_quest < sql/03_init_grammar.sql
-```
-
-修复遵循**确定性替换**：精确到 `(day, point_index)` 逐条给出「原文 → 修复值」，
-匹配不上就跳过告警，不做模糊批量替换，确保不误改讲义语义。
-
-`e2e_check.mjs` 直接通过 Chrome DevTools Protocol 驱动系统 Chrome，
-不依赖任何 npm 包（Node 18+ 自带 `fetch`，Node 22 自带 `WebSocket`），
-运行时会用 `scripts/` 同级的 `screenshots/` 目录保存各页面截图。
-
-它除了逐页断言文案与控制台异常外，还会用 `Input.dispatchKeyEvent` **派发真实键盘事件**，
-验证「键盘能独立完成整关作答」这条主线：
+端到端校验里用 `Input.dispatchKeyEvent` 派发真实按键，确认不碰鼠标也能走完一关：
 
 - 选择题（词汇 / 语法 / AI 练习）：功能键区 `1` `2` `3` `4` 选择选项 → 自动前进 → 成绩结算
   （字母键 `A` `B` `C` `D` 保留为备选键位；数字键位于功能键区且四键相邻，
@@ -477,8 +377,12 @@ mysql -h ::1 -u root -p english_quest < sql/03_init_grammar.sql
   困难模式**无任何长度提示**、用 `空格` 分格）→ `Enter` 提交 → 逐格红绿判分
   → `Ctrl+;` 看答案 → 纯键盘答完 10 句进入结算
 
-两个接口测试脚本都可**反复执行**：会把「积分幂等保护」「每日上限保护」
-识别为正常结果，而不是误报失败。
+### 关于语法讲义数据
+
+`sql/03_init_grammar.sql` 是 `sql/` 里唯一由上游 PDF 解析产物生成的脚本，
+生成与修复工具同样不入库。仓库提供的是**修复完成后**的那一份：导入后讲义正文
+不含跨句拼接残段与 `U+0000` 空字符，个别笔误也已按 `(day, point_index)`
+逐条确定性替换过，没有做模糊批量替换。
 
 ---
 
@@ -525,7 +429,7 @@ ECharts 画的是 canvas，**不解析 CSS 变量** ——
 （包括 `echarts.graphic.LinearGradient` 内部的 `colorStops`），
 所以图表配置里可以继续写 `var(--eq-*)`，浅色/深色两套色值会自动生效。
 
-`scripts/theme_check.mjs` 有一道专门的守卫：抽样扫描三个图表画布的像素，
+主题回归里有一道专门的守卫：抽样扫描三个图表画布的像素，
 **只要出现纯黑就判定色值没解析成功**（两个主题都扫）。
 
 图表配色约定（`Stats.vue`）：
@@ -535,7 +439,7 @@ ECharts 画的是 canvas，**不解析 CSS 变量** ——
   相邻档位相对亮度比控制在 1.25-1.66x，**末档用强调色而非近黑**
 - 柱体/折线填充用**实心强调色**，不要用 `--eq-primary-line`
   （那是半透明边框色，做填充会整片发灰）
-- 改色前先跑 `python scripts/theme_contrast.py` 体检亮度阶梯，
+- 改色前先做一遍 WCAG 对比度与相邻档亮度均匀度体检，
   不要凭感觉挑色
 
 **保留的结构性改进**（与配色无关）：
@@ -607,7 +511,7 @@ const day = computed(() => Number(route.params.day))
 
 已按此模式改过的页面：`GrammarLesson.vue`（`day`）、`VocabQuiz.vue`（`levelId`）、
 `ListenPractice.vue`（`levelId` / `mode` / `isHard`）。
-回归验证脚本：`scripts/repro_grammar_day.mjs`。
+这三条带参数的路由都做过回归：点 Day3 确实进 Day3，且不整页刷新。
 
 ### 积分引擎（防刷分）
 
@@ -663,7 +567,7 @@ const day = computed(() => Number(route.params.day))
 
 同一道题选 B 和选 C 是两种不同的错法，用同一段通用解析等于没讲。
 但题库里每题只有**一段静态 `analysis`**（`t_grammar_question.analysis` /
-`t_vocab_question.analysis`），它只论证正确答案。量化体检（`scripts/audit_analysis.py`）结果：
+`t_vocab_question.analysis`），它只论证正确答案。量化体检的结果：
 
 | 模块 | 题量 | 解析提及任一干扰项 | 覆盖学生实际错选的概率 |
 | --- | --- | --- | --- |
@@ -748,7 +652,7 @@ const day = computed(() => Number(route.params.day))
 现在只有「播放发音」按钮与 `Ctrl+Space` 会触发播放（`play()` 只剩这两个调用点），
 并且把「被浏览器拦住」和「文件真的缺失」分成两条提示。
 验证方式是把 `HTMLMediaElement.play` hook 掉看**调用栈**：
-`scripts/diag_audio.mjs` 会告诉你每一次播到底是谁发起的。
+按这个办法跑一遍，能定位到每一次播放究竟是哪段代码发起的。
 
 **积分口径**：答对一句按模式给分（简单 +2 / 困难 +3），通过关卡 +10，满分 +20；
 同一关卡同一天只结算一次答题积分（`biz_id` 幂等）。
@@ -784,7 +688,7 @@ const day = computed(() => Number(route.params.day))
 > **怎么证明"没联网"**：`MOCK` 与 `FALLBACK` 都产出可用内容，但含义完全不同 ——
 > `MOCK` 是命中了 `isMock()` 短路分支、**一次 HTTP 都没发**；`FALLBACK` 是发出去失败了才降级。
 > 判断交付版本是否真的离线，看 `source` 是不是 **`MOCK`**。
-> `node scripts/ai_local_mode_check.mjs` 就是干这件事的（25 项，对 `source` 断言严格等于 `MOCK`）。
+> 交付前对着四项能力各发一次请求，看返回的 `source` 是不是都是 `MOCK`，就这一步。
 
 **本地生成不依赖任何外部服务**：不用联网、不用 key、不读外部文件，
 只依赖数据库里的题目数据 —— 所以**离线环境、答辩断网都照常可用**，

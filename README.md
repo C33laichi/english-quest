@@ -304,8 +304,8 @@ cd ../backend && mvn package -DskipTests     # 产物 target/english-quest.jar�
 `.workbuddy/`（本地助手数据）。
 
 > ⚠️ **只把 `dist` 丢给普通静态服务器会打不开页面。** 前端请求走相对路径 `/api`，
-> 靠的是 vite dev server 的代理转发到 8090 —— 而**代理只在 `npm run dev` 时存在**。
-> 一旦用静态服务器（例如 `npx serve`）托管 `dist`，`/api` 会全部 404、页面一片空白。
+> 靠的是 vite 代理转发到 8090 —— 静态服务器（例如 `npx serve`）没有这层代理，
+> `/api` 会全部 404、页面一片空白。
 > 预览构建产物请用 `npm run preview` —— `vite.config.js` 里 `preview.proxy`
 > 与 dev 同源，同样把 `/api` 转到 8090：
 >

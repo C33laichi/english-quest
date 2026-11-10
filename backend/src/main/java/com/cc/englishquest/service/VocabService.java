@@ -12,6 +12,7 @@ import com.cc.englishquest.mapper.StudyRecordMapper;
 import com.cc.englishquest.mapper.UserLessonMapper;
 import com.cc.englishquest.mapper.VocabLevelMapper;
 import com.cc.englishquest.mapper.VocabQuestionMapper;
+import com.cc.englishquest.vo.CheckinVO;
 import com.cc.englishquest.vo.LevelVO;
 import com.cc.englishquest.vo.QuestionVO;
 import com.cc.englishquest.vo.SubmitResultVO;
@@ -213,18 +214,25 @@ public class VocabService {
         // ---------- 积分结算 ----------
         String today = LocalDate.now().toString();
         int gain = 0;
+        int lvPt = 0;
+        int fullPt = 0;
+        int checkinPt = 0;
         // 答题积分（同一关卡每天只结算一次，防止重复刷分）
-        gain += pointService.addPoints(userId, correctCount * pointService.getAnswerPoint(),
+        int ansPt = pointService.addPoints(userId, correctCount * pointService.getAnswerPoint(),
                 PointType.ANSWER, "ans-" + MODULE + "-" + levelId + "-" + today, "词汇闯关答题得分");
+        gain += ansPt;
         if (passed) {
-            gain += pointService.addPoints(userId, pointService.getLevelPoint(),
+            lvPt = pointService.addPoints(userId, pointService.getLevelPoint(),
                     PointType.LEVEL, "level-" + MODULE + "-" + levelId, "完成词汇关卡：" + level.getName());
+            gain += lvPt;
             if (score >= 100) {
-                gain += pointService.addPoints(userId, pointService.getFullScorePoint(),
+                fullPt = pointService.addPoints(userId, pointService.getFullScorePoint(),
                         PointType.FULL_SCORE, "full-" + MODULE + "-" + levelId, "词汇关卡满分：" + level.getName());
+                gain += fullPt;
             }
             // 完成关卡即打卡
-            pointService.checkin(userId);
+            CheckinVO checkin = pointService.checkin(userId);
+            checkinPt = checkin == null ? 0 : checkin.getGainPoints();
         }
 
         // ---------- 每日任务进度 ----------
@@ -242,6 +250,10 @@ public class VocabService {
         vo.setPassed(passed);
         vo.setUnlockNext(passed && hasNextLevel(level));
         vo.setGainPoints(gain);
+        vo.setAnswerPoints(ansPt);
+        vo.setLevelPoints(lvPt);
+        vo.setFullScorePoints(fullPt);
+        vo.setCheckinPoints(checkinPt);
         vo.setNewRecord(newRecord);
         vo.setWrongQuestions(wrongItems);
         return vo;

@@ -13,6 +13,7 @@ import com.cc.englishquest.mapper.ListenLevelMapper;
 import com.cc.englishquest.mapper.ListenSentenceMapper;
 import com.cc.englishquest.mapper.StudyRecordMapper;
 import com.cc.englishquest.mapper.UserLessonMapper;
+import com.cc.englishquest.vo.CheckinVO;
 import com.cc.englishquest.vo.ListenCheckVO;
 import com.cc.englishquest.vo.ListenLevelVO;
 import com.cc.englishquest.vo.ListenResultVO;
@@ -314,22 +315,30 @@ public class ListenService {
         String today = LocalDate.now().toString();
         int perCorrect = hard ? POINT_PER_CORRECT_HARD : POINT_PER_CORRECT_EASY;
         int gain = 0;
+        int ansPt = 0;
+        int lvPt = 0;
+        int fullPt = 0;
+        int checkinPt = 0;
         if (correctCount > 0) {
-            gain += pointService.addPoints(userId, correctCount * perCorrect, PointType.ANSWER,
+            ansPt = pointService.addPoints(userId, correctCount * perCorrect, PointType.ANSWER,
                     "ans-" + MODULE + "-" + mode + "-" + levelId + "-" + today,
                     "听力听写答对 " + correctCount + " 句");
+            gain += ansPt;
         }
         if (passed) {
-            gain += pointService.addPoints(userId, pointService.getLevelPoint(), PointType.LEVEL,
+            lvPt = pointService.addPoints(userId, pointService.getLevelPoint(), PointType.LEVEL,
                     "level-" + MODULE + "-" + mode + "-" + levelId,
                     "完成听力关卡：" + level.getName());
+            gain += lvPt;
             if (fullScore) {
-                gain += pointService.addPoints(userId, pointService.getFullScorePoint(),
+                fullPt = pointService.addPoints(userId, pointService.getFullScorePoint(),
                         PointType.FULL_SCORE, "full-" + MODULE + "-" + mode + "-" + levelId,
                         "听力关卡满分：" + level.getName());
+                gain += fullPt;
             }
             // 完成关卡即打卡
-            pointService.checkin(userId);
+            CheckinVO checkin = pointService.checkin(userId);
+            checkinPt = checkin == null ? 0 : checkin.getGainPoints();
         }
 
         // ---------- 每日任务进度 ----------
@@ -352,6 +361,10 @@ public class ListenService {
         vo.setAvgAccuracy(Math.round(avgAccuracy * 1000) / 1000.0);
         vo.setStars(stars);
         vo.setGainPoints(gain);
+        vo.setAnswerPoints(ansPt);
+        vo.setLevelPoints(lvPt);
+        vo.setFullScorePoints(fullPt);
+        vo.setCheckinPoints(checkinPt);
         vo.setNewRecord(newRecord);
         vo.setDetails(details);
         return vo;

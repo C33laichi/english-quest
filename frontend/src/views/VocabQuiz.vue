@@ -99,6 +99,11 @@
               <b>{{ Math.round((result.correctCount / result.totalCount) * 100) }}%</b><span>正确率</span>
             </div>
           </div>
+          <div class="muted gain-detail">
+            <template v-if="gainParts.length">{{ gainParts.join(' · ') }}</template>
+            <template v-else>本次没有可结算的积分（该关奖励已领取过，或已达今日上限）</template>
+            <template v-if="gainNote">　{{ gainNote }}</template>
+          </div>
         </div>
 
         <div v-if="result.wrongQuestions?.length" class="card">
@@ -201,6 +206,20 @@ const current = ref(1)
 const spellInput = ref('')
 const loading = ref(true)
 const result = ref(null)
+
+/** 结算页的积分拆解：三块实发值相加恒等于 gainPoints */
+const gainParts = computed(() => {
+  const r = result.value || {}
+  const parts = []
+  if (r.answerPoints > 0) parts.push(`答对 ${r.correctCount} 题 +${r.answerPoints}`)
+  if (r.levelPoints > 0) parts.push(`通关 +${r.levelPoints}`)
+  if (r.fullScorePoints > 0) parts.push(`满分 +${r.fullScorePoints}`)
+  return parts
+})
+const gainNote = computed(() => {
+  const r = result.value || {}
+  return r.checkinPoints > 0 ? `另有每日打卡 +${r.checkinPoints}` : ''
+})
 const startTime = ref(Date.now())
 const spellRef = ref()
 

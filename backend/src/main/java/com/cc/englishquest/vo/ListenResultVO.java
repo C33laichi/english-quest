@@ -39,6 +39,16 @@ public class ListenResultVO {
 
     private Integer gainPoints;
 
+    /** 积分拆解，四块加起来等于 gainPoints；均为实发值（上限截断 / 幂等命中时为 0） */
+    /** 答题得分 = 答对句数 × 每题分值（简单 2 / 困难 3） */
+    private Integer answerPoints;
+    /** 通过关卡奖励 */
+    private Integer levelPoints;
+    /** 满分奖励 */
+    private Integer fullScorePoints;
+    /** 本次顺带触发的每日打卡 */
+    private Integer checkinPoints;
+
     private Boolean newRecord;
 
     /** 逐句回顾 */

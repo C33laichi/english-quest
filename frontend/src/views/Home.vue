@@ -181,11 +181,14 @@
         <div class="card">
           <div class="card-title">积分规则</div>
           <div class="rule-row"><span>答对一题</span><b>+2</b></div>
-          <div class="rule-row"><span>通过关卡</span><b>+10</b></div>
-          <div class="rule-row"><span>单关满分</span><b>+20</b></div>
+          <div class="rule-row"><span>听力困难模式答对一句</span><b>+3</b></div>
+          <div class="rule-row"><span>通过关卡（每关一次）</span><b>+10</b></div>
+          <div class="rule-row"><span>单关满分（每关一次）</span><b>+20</b></div>
           <div class="rule-row"><span>每日首次登录</span><b>+5</b></div>
           <div class="rule-row"><span>每日打卡</span><b>+5</b></div>
-          <div class="muted" style="font-size:12px;margin-top:10px">每日积分上限 200，答题类上限 100</div>
+          <div class="muted" style="font-size:12px;margin-top:10px">
+            答题分同一关卡每天只结算一次；每日上限 200，其中答题类 100
+          </div>
         </div>
       </div>
     </div>

@@ -109,16 +109,19 @@
           <b>{{ logsSum > 0 ? '+' : '' }}{{ logsSum }}</b> 分
         </div>
 
-        <div v-for="l in logs" :key="l.id" class="log-row">
+        <div v-for="l in logsWithBalance" :key="l.id" class="log-row">
           <div class="log-main">
-            <span class="chip gray log-type">{{ l.typeName }}</span>
-            <span class="log-remark">{{ l.remark || '—' }}</span>
+            <div class="log-head">
+              <span class="chip gray log-type">{{ l.typeName }}</span>
+              <span class="log-remark">{{ l.remark || '—' }}</span>
+            </div>
+            <span class="log-bal">当时 {{ l.balance }} 分</span>
           </div>
           <div class="log-side">
             <b class="log-delta" :class="{ minus: l.changePoints < 0 }">
               {{ l.changePoints > 0 ? '+' : '' }}{{ l.changePoints }}
             </b>
-            <span class="log-time">{{ l.createTime }}</span>
+            <span class="log-time">{{ (l.createTime || '').replace('T', ' ').slice(0, 16) }}</span>
           </div>
         </div>
 
@@ -126,6 +129,15 @@
           还没有积分记录，去答几道题吧
         </div>
       </div>
+
+      <!-- 底部左侧给当前总积分：上面的「最近 N 笔」只是已加载部分的合计，
+           看到一堆零散加减分时，需要一个总数当参照，否则没法判断对错 -->
+      <template #footer>
+        <div class="log-foot">
+          <span class="log-foot-label">总积分</span>
+          <b class="log-foot-val">{{ userStore.user?.totalPoints ?? 0 }}</b>
+        </div>
+      </template>
     </el-drawer>
   </div>
 </template>
@@ -151,9 +163,25 @@ const logs = ref([])
 /** 当前列出这几笔的合计。只统计已加载的部分，标题里写清是「最近 N 笔」，不冒充总分 */
 const logsSum = computed(() => logs.value.reduce((s, l) => s + (l.changePoints || 0), 0))
 
+/**
+ * 每笔发生后的余额。列表是最新在前，所以最新一笔的余额就等于当前总分，
+ * 再往前逐笔减去新近那几笔的变动值即可倒推 —— 不需要后端多返一个字段。
+ * 前提是「当前总分」与列表同源且是刚取的，openLogs 里已经先刷过一次。
+ */
+const logsWithBalance = computed(() => {
+  let rest = userStore.user?.totalPoints ?? 0
+  return logs.value.map(l => {
+    const row = { ...l, balance: rest }
+    rest -= l.changePoints || 0
+    return row
+  })
+})
+
 async function openLogs() {
   logsVisible.value = true
   logsLoading.value = true
+  // 顺手刷一次总分：抽屉底部要跟账目对得上，不能用进页面时的旧快照
+  userStore.refresh().catch(() => {})
   try {
     logs.value = (await gameApi.pointLogs(50)) || []
   } catch (e) {
@@ -358,6 +386,26 @@ onMounted(async () => {
   color: var(--eq-text);
 }
 
+/* 抽屉页脚：Element Plus 默认 text-align:right，这里靠 flex 靠左站 */
+.log-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--eq-border);
+}
+.log-foot-label {
+  font-size: 12px;
+  color: var(--eq-text-sub);
+}
+.log-foot-val {
+  font-size: 18px;
+  line-height: 1;
+  color: var(--eq-text);
+  font-variant-numeric: tabular-nums;
+}
+
 /* 一行一笔：左边「类型 + 说明」，右边「变动值 + 时间」 */
 .log-row {
   display: flex;
@@ -372,9 +420,23 @@ onMounted(async () => {
 }
 .log-main {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+/* 第一行：类型 + 说明；第二行是这个时刻的余额 */
+.log-head {
+  display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
+  max-width: 100%;
+}
+.log-bal {
+  font-size: 11px;
+  color: var(--eq-text-mute);
+  font-variant-numeric: tabular-nums;
 }
 .log-type {
   flex: none;

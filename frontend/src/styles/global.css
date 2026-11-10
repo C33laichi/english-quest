@@ -1418,6 +1418,14 @@ kbd {
   color: var(--eq-text-mute);
 }
 
+/* 结算页「+N 获得积分」下面那行拆解：答题 +18 · 通关 +10 */
+.gain-detail {
+  margin-top: 12px;
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.6;
+}
+
 .wrong-item {
   padding: 14px 0;
   border-bottom: 1px solid var(--eq-border-soft);

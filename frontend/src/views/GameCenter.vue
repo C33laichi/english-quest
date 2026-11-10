@@ -74,6 +74,7 @@
           <div class="card-title">积分规则</div>
           <div class="rule-grid">
             <div class="rule-item"><span>📝 答对一题</span><b>+2</b></div>
+            <div class="rule-item"><span>🎧 听力困难答对一句</span><b>+3</b></div>
             <div class="rule-item"><span>🏅 通过关卡</span><b>+10</b></div>
             <div class="rule-item"><span>💯 关卡满分</span><b>+20</b></div>
             <div class="rule-item"><span>📅 每日首登</span><b>+5</b></div>
@@ -81,6 +82,7 @@
             <div class="rule-item"><span>🎁 完成任务</span><b>见任务</b></div>
           </div>
           <div class="muted" style="margin-top:12px;font-size:12px">
+            通关与满分奖励每个关卡只发一次；答题分同一关卡每天只结算一次。
             每日最多获得 {{ overview.dailyLimit ?? 200 }} 积分，答题类每日上限 100 分（防止刷分）
           </div>
         </div>

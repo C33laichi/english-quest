@@ -15,6 +15,7 @@ import com.cc.englishquest.mapper.GrammarLessonMapper;
 import com.cc.englishquest.mapper.GrammarQuestionMapper;
 import com.cc.englishquest.mapper.StudyRecordMapper;
 import com.cc.englishquest.mapper.UserLessonMapper;
+import com.cc.englishquest.vo.CheckinVO;
 import com.cc.englishquest.vo.GrammarLessonVO;
 import com.cc.englishquest.vo.QuestionVO;
 import com.cc.englishquest.vo.SubmitResultVO;
@@ -253,16 +254,23 @@ public class GrammarService {
 
         String today = LocalDate.now().toString();
         int gain = 0;
-        gain += pointService.addPoints(userId, correctCount * pointService.getAnswerPoint(),
+        int ansPt = pointService.addPoints(userId, correctCount * pointService.getAnswerPoint(),
                 PointType.ANSWER, "ans-" + MODULE + "-" + day + "-" + today, "语法闯关答题得分");
+        int lvPt = 0;
+        int fullPt = 0;
+        int checkinPt = 0;
+        gain += ansPt;
         if (passed) {
-            gain += pointService.addPoints(userId, pointService.getLevelPoint(),
+            lvPt = pointService.addPoints(userId, pointService.getLevelPoint(),
                     PointType.LEVEL, "level-" + MODULE + "-" + day, "通过语法第" + day + "天：" + lesson.getTitle());
+            gain += lvPt;
             if (score >= 100) {
-                gain += pointService.addPoints(userId, pointService.getFullScorePoint(),
+                fullPt = pointService.addPoints(userId, pointService.getFullScorePoint(),
                         PointType.FULL_SCORE, "full-" + MODULE + "-" + day, "语法第" + day + "天满分");
+                gain += fullPt;
             }
-            pointService.checkin(userId);
+            CheckinVO checkin = pointService.checkin(userId);
+            checkinPt = checkin == null ? 0 : checkin.getGainPoints();
         }
         if (passed) {
             taskService.addProgress(userId, TaskService.TYPE_LEVEL_COUNT, 1);
@@ -278,6 +286,10 @@ public class GrammarService {
         vo.setPassed(passed);
         vo.setUnlockNext(passed && day < maxDay());
         vo.setGainPoints(gain);
+        vo.setAnswerPoints(ansPt);
+        vo.setLevelPoints(lvPt);
+        vo.setFullScorePoints(fullPt);
+        vo.setCheckinPoints(checkinPt);
         vo.setNewRecord(newRecord);
         vo.setWrongQuestions(wrongItems);
         return vo;

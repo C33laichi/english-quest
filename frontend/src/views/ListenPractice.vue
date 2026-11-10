@@ -171,6 +171,12 @@
             <div><b>+{{ result.gainPoints }}</b><span>获得积分</span></div>
             <div><b>{{ Math.round(result.avgAccuracy * 100) }}%</b><span>平均准确率</span></div>
           </div>
+          <!-- 把 +N 拆开：只给合计数时，28、30 这种数字拿去对「积分规则」永远对不上 -->
+          <div class="muted gain-detail">
+            <template v-if="gainParts.length">{{ gainParts.join(' · ') }}</template>
+            <template v-else>本次没有可结算的积分（该关奖励已领取过，或已达今日上限）</template>
+            <template v-if="gainNote">　{{ gainNote }}</template>
+          </div>
         </div>
 
         <div class="card">
@@ -293,6 +299,21 @@ const judged = ref(false)
 const revealed = ref(false)
 const check = ref({})
 const result = ref(null)
+
+/** 结算页的积分拆解：三块实发值相加恒等于 gainPoints，拿去对「积分规则」能对上 */
+const gainParts = computed(() => {
+  const r = result.value || {}
+  const parts = []
+  if (r.answerPoints > 0) parts.push(`听对 ${r.correctCount} 句 +${r.answerPoints}`)
+  if (r.levelPoints > 0) parts.push(`通关 +${r.levelPoints}`)
+  if (r.fullScorePoints > 0) parts.push(`满分 +${r.fullScorePoints}`)
+  return parts
+})
+/** 打卡是通关顺带触发的，不计入 gainPoints，单独提一句 */
+const gainNote = computed(() => {
+  const r = result.value || {}
+  return r.checkinPoints > 0 ? `另有每日打卡 +${r.checkinPoints}` : ''
+})
 const loading = ref(true)
 const rate = ref(0.9)
 const showChinese = ref(true)

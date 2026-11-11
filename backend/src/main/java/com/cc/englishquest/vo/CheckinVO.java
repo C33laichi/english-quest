@@ -19,7 +19,7 @@ public class CheckinVO {
     /** 打卡后的连续天数 */
     private int streakDays;
 
-    /** 本次实际到账积分（每日上限截断后；0 表示今日已打过卡或已达上限） */
+    /** 本次实际到账积分（固定 5 分；0 表示今日已打过卡） */
     private int gainPoints;
 
     /** 打卡后的总积分 */

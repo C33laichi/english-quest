@@ -33,14 +33,14 @@ public class SubmitResultVO {
     /*
      * gainPoints 的拆解。四块加起来等于 gainPoints ——
      * 只给一个合计数时，学生会拿它去对「积分规则」，28、30 这种数字永远对不上：
-     * 通关和满分每个关卡只奖一次、每日上限还会截断，光看规则推不出来。
-     * 这几项都是**实发值**（已被上限截断、幂等命中时为 0），前端直接展示即可。
+     * 通关和满分每个关卡只奖一次，光看规则推不出来。
+     * 这几项都是**实发值**（幂等命中、即该关已结算过时为 0），前端直接展示即可。
      */
     /** 答题得分 = 答对题数 × 每题分值 */
     private Integer answerPoints;
     /** 通过关卡奖励（重复通关或已领取时为 0） */
     private Integer levelPoints;
-    /** 满分奖励（未满分、重复领取或已上限时为 0） */
+    /** 满分奖励（未满分或重复领取时为 0） */
     private Integer fullScorePoints;
     /** 本次顺带触发的每日打卡（0 表示当天已打过） */
     private Integer checkinPoints;

@@ -100,14 +100,13 @@ app:
     dpi: 180
     max-pages: 40
   point:
-    daily-limit: 200
     answer-point: 2
     level-point: 10
     full-score-point: 20
     login-point: 5
     # 每日打卡固定奖励（不随连续天数递增）
     checkin-point: 5
-    answer-daily-limit: 100
+    # 不再设置每日积分上限：防刷依赖 bizId 幂等 +「关卡通过后再次闯关不计分」
 
 logging:
   level:

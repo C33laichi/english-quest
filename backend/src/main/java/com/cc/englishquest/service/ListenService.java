@@ -230,31 +230,40 @@ public class ListenService {
                 correctCount++;
             }
 
-            // 答题记录
-            StudyRecord record = new StudyRecord();
-            record.setUserId(userId);
-            record.setModule(MODULE);
-            record.setTargetId(levelId);
-            record.setQuestionId(s.getId());
-            record.setUserAnswer(userAnswer);
-            record.setCorrectAnswer(s.getEnglish());
-            record.setIsCorrect(checked.getCorrect() ? 1 : 0);
-            record.setCostTime(dto.getCostTime());
-            record.setCreateTime(LocalDateTime.now());
-            studyRecordMapper.insert(record);
+            /*
+             * 看过答案的句子不写答题记录、也不收进错题本。
+             *
+             * 原来照写一条 is_correct=0：这类提交必然判错，全沉进正确率的分母，
+             * 把看板上的正确率一路压低（实测 624 条听力记录里 110 条是空答案）。
+             * 那次根本不是作答，记进去只会污染统计；星级与积分仍照旧按 revealed 扣，
+             * 所以「看答案会影响成绩」这个约束没有放松。
+             */
+            if (!revealed) {
+                StudyRecord record = new StudyRecord();
+                record.setUserId(userId);
+                record.setModule(MODULE);
+                record.setTargetId(levelId);
+                record.setQuestionId(s.getId());
+                record.setUserAnswer(userAnswer);
+                record.setCorrectAnswer(s.getEnglish());
+                record.setIsCorrect(checked.getCorrect() ? 1 : 0);
+                record.setCostTime(dto.getCostTime());
+                record.setCreateTime(LocalDateTime.now());
+                studyRecordMapper.insert(record);
 
-            // 未答对则收录错题本
-            if (!Boolean.TRUE.equals(checked.getCorrect())) {
-                // 解析里带上逐词差异，错题本不必再自己算一遍
-                String analysis = String.format("词级匹配 %d/%d，准确率 %d%%",
-                        checked.getMatchedCount(), checked.getTotalWords(),
-                        Math.round(checked.getAccuracy() * 100));
-                String diff = diffWords(s.getEnglish(), rawAnswer);
-                if (!diff.isEmpty()) {
-                    analysis = analysis + "。" + diff;
+                // 未答对则收录错题本
+                if (!Boolean.TRUE.equals(checked.getCorrect())) {
+                    // 解析里带上逐词差异，错题本不必再自己算一遍
+                    String analysis = String.format("词级匹配 %d/%d，准确率 %d%%",
+                            checked.getMatchedCount(), checked.getTotalWords(),
+                            Math.round(checked.getAccuracy() * 100));
+                    String diff = diffWords(s.getEnglish(), rawAnswer);
+                    if (!diff.isEmpty()) {
+                        analysis = analysis + "。" + diff;
+                    }
+                    errorBookService.record(userId, MODULE, s.getId(), level.getName(),
+                            s.getChinese(), s.getEnglish(), rawAnswer, analysis);
                 }
-                errorBookService.record(userId, MODULE, s.getId(), level.getName(),
-                        s.getChinese(), s.getEnglish(), rawAnswer, analysis);
             }
 
             ListenResultVO.ItemVO detail = new ListenResultVO.ItemVO();
@@ -472,18 +481,28 @@ public class ListenService {
         return n.isEmpty() ? new String[0] : n.split(" ");
     }
 
+    // 词级准确率（matched / totalWords）已随「掌握 = 逐词全对」统一而移除：
+    // 留着它迟早又被人拿去凑一个 80% 的宽松标准，和 exactMatch 打架。
+
     /**
-     * 词级准确率：匹配上的词数 / 正确答案词数
+     * 整句是否「逐词全对且没有多敲」。
      *
-     * 供错题本重练等场景复用，避免「少敲一个词就判全错」。
+     * <p>与 {@code buildCheck} 里提交判分的口径完全一致（LCS 匹配数等于正确词数、
+     * 且用户词数也相等，等价于两个词序列逐位相同）。抽出来是为了让错题本重练
+     * 也能用同一把尺子 —— 掌握与否不该因为入口不同而判定不同。</p>
      */
-    public static double accuracy(String correctText, String userText) {
+    public static boolean exactMatch(String correctText, String userText) {
         String[] c = words(correctText);
-        if (c.length == 0) {
-            return 0;
-        }
         String[] u = words(userText);
-        return (double) matchCount(c, u, new boolean[c.length], new boolean[u.length]) / c.length;
+        if (c.length == 0 || u.length != c.length) {
+            return false;
+        }
+        for (int i = 0; i < c.length; i++) {
+            if (!c[i].equals(u[i])) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

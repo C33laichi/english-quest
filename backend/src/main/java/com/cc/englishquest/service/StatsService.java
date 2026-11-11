@@ -1,11 +1,9 @@
 package com.cc.englishquest.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.cc.englishquest.entity.StudyRecord;
 import com.cc.englishquest.entity.User;
 import com.cc.englishquest.entity.UserLesson;
 import com.cc.englishquest.mapper.StatsMapper;
-import com.cc.englishquest.mapper.StudyRecordMapper;
 import com.cc.englishquest.mapper.UserLessonMapper;
 import com.cc.englishquest.mapper.UserMapper;
 import com.cc.englishquest.vo.ChartVO;
@@ -27,22 +25,27 @@ import java.util.Map;
 public class StatsService {
 
     private final StatsMapper statsMapper;
-    private final StudyRecordMapper studyRecordMapper;
     private final UserLessonMapper userLessonMapper;
     private final UserMapper userMapper;
     private final GameService gameService;
 
     /** 学习概览 */
     public StatsOverviewVO overview(Long userId) {
-        List<StudyRecord> records = studyRecordMapper.selectList(new LambdaQueryWrapper<StudyRecord>()
-                .eq(StudyRecord::getUserId, userId));
+        Map<String, Object> stat = statsMapper.overviewStat(userId);
+        Map<String, Object> master = statsMapper.mastery(userId);
+
         StatsOverviewVO vo = new StatsOverviewVO();
-        vo.setTotalQuestions(records.size());
-        int correct = records.stream().mapToInt(r -> r.getIsCorrect() == null ? 0 : r.getIsCorrect()).sum();
-        vo.setAccuracy(records.isEmpty() ? 0 : (int) Math.round(correct * 100.0 / records.size()));
-        vo.setStudyDays((int) records.stream()
-                .map(r -> r.getCreateTime().toLocalDate())
-                .distinct().count());
+        // 练习次数：同一个句子练 10 次就算 10 次，这是「练了多少」，保留原语义
+        vo.setTotalQuestions(toInt(stat.get("attempts")));
+        // 覆盖题数：去过重的题目数，跟正确率的分母是同一批
+        vo.setCoveredQuestions(toInt(stat.get("covered")));
+        vo.setStudyDays(toInt(stat.get("days")));
+
+        // 正确率按「每道题最近一次结果」算，反映当前掌握度而不是历史动作对错比
+        int total = toInt(master.get("total"));
+        int correct = toInt(master.get("correct"));
+        vo.setAccuracy(total == 0 ? 0 : (int) Math.round(correct * 100.0 / total));
+
         vo.setPassedLessons(Math.toIntExact(userLessonMapper.selectCount(new LambdaQueryWrapper<UserLesson>()
                 .eq(UserLesson::getUserId, userId)
                 .in(UserLesson::getStatus, "PASSED", "MASTERED"))));

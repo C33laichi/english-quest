@@ -48,7 +48,10 @@ export const gameApi = {
 
 /* ---------------- 错题本 ---------------- */
 export const errorBookApi = {
-  list: (module) => request.get('/error-book/list', { params: module ? { module } : {} }),
+  /** sort：times 错得最多 / oldest 最早做错 / 不传 = 最近做错 */
+  list: (module, sort) => request.get('/error-book/list', {
+    params: { ...(module ? { module } : {}), ...(sort ? { sort } : {}) }
+  }),
   count: () => request.get('/error-book/count'),
   retry: (id, userAnswer) => request.post(`/error-book/${id}/retry`, { userAnswer }),
   master: (id) => request.put(`/error-book/${id}/master`),

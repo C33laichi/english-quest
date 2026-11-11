@@ -7,12 +7,19 @@
           共 {{ list.length }} 道 · 重练答对后可标记为已掌握，掌握后不再计入待攻克
         </div>
       </div>
-      <el-radio-group v-model="module" @change="load">
-        <el-radio-button value="">全部</el-radio-button>
-        <el-radio-button value="VOCAB">词汇</el-radio-button>
-        <el-radio-button value="GRAMMAR">语法</el-radio-button>
-        <el-radio-button value="LISTENING">听力</el-radio-button>
-      </el-radio-group>
+      <div class="head-actions">
+        <el-select v-model="sort" size="small" style="width:132px" @change="load">
+          <el-option label="最近做错" value="recent" />
+          <el-option label="错得最多" value="times" />
+          <el-option label="最早做错" value="oldest" />
+        </el-select>
+        <el-radio-group v-model="module" @change="load">
+          <el-radio-button value="">全部</el-radio-button>
+          <el-radio-button value="VOCAB">词汇</el-radio-button>
+          <el-radio-button value="GRAMMAR">语法</el-radio-button>
+          <el-radio-button value="LISTENING">听力</el-radio-button>
+        </el-radio-group>
+      </div>
     </div>
 
     <div v-loading="loading">
@@ -92,6 +99,8 @@ const { supported, speak, speaking, stop } = useSpeech()
 
 const list = ref([])
 const module = ref('')
+/** 排序：最近做错 / 错得最多 / 最早做错 */
+const sort = ref('recent')
 const loading = ref(true)
 const retryId = ref(null)
 const retryAnswer = ref('')
@@ -172,7 +181,7 @@ function retryPlaceholder(item) {
 async function load() {
   loading.value = true
   try {
-    list.value = (await errorBookApi.list(module.value || undefined)) || []
+    list.value = (await errorBookApi.list(module.value || undefined, sort.value)) || []
   } finally {
     loading.value = false
   }
@@ -224,6 +233,14 @@ onMounted(load)
 </script>
 
 <style scoped>
+/* 排序下拉与模块切换并排，窄屏自动换行 */
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .error-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));

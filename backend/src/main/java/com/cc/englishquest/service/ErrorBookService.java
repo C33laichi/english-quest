@@ -82,14 +82,27 @@ public class ErrorBookService {
                 q.getAnalysis());
     }
 
-    /** 我的错题列表 */
-    public List<ErrorBook> list(Long userId, String module, Integer status, String keyword) {
+    /**
+     * 我的错题列表。
+     *
+     * @param sort 排序方式：{@code times} 错得最多、{@code oldest} 最早做错、
+     *             其他/为空 最近做错（默认）。错题多起来以后，"最近错的"和
+     *             "错了十几遍还没拿下的"是两种完全不同的复习需求，
+     *             固定一种顺序总有一边不好用。
+     */
+    public List<ErrorBook> list(Long userId, String module, Integer status, String keyword, String sort) {
         LambdaQueryWrapper<ErrorBook> wrapper = new LambdaQueryWrapper<ErrorBook>()
                 .eq(ErrorBook::getUserId, userId)
                 .eq(module != null && !module.isBlank(), ErrorBook::getModule, module)
                 .eq(status != null, ErrorBook::getStatus, status)
-                .like(keyword != null && !keyword.isBlank(), ErrorBook::getKnowledgePoint, keyword)
-                .orderByDesc(ErrorBook::getUpdateTime);
+                .like(keyword != null && !keyword.isBlank(), ErrorBook::getKnowledgePoint, keyword);
+        switch (sort == null ? "" : sort) {
+            // 次数相同的按最近又错的排前面，否则同一批老错题顺序永远不变
+            case "times" -> wrapper.orderByDesc(ErrorBook::getWrongTimes)
+                    .orderByDesc(ErrorBook::getUpdateTime);
+            case "oldest" -> wrapper.orderByAsc(ErrorBook::getCreateTime);
+            default -> wrapper.orderByDesc(ErrorBook::getUpdateTime);
+        }
         List<ErrorBook> rows = errorBookMapper.selectList(wrapper);
         translateGrammarAnswers(rows);
         return rows;
@@ -106,9 +119,14 @@ public class ErrorBookService {
         GrammarQuestion gq = loadGrammarQuestion(entity);
         boolean correct;
         if (ListenService.MODULE.equals(entity.getModule())) {
-            // 听力听写是整句输入，按词级准确率判定，
-            // 否则少敲一个词整句就判错，反馈过于打击人
-            correct = ListenService.accuracy(entity.getCorrectAnswer(), userAnswer) >= 0.8;
+            /*
+             * 听力听写是整句输入，必须逐词全对（且没有多敲的词）才算掌握。
+             *
+             * 这里原来放的是 accuracy >= 0.8 —— 同一句话正式提交时错一个词就判错，
+             * 到错题本重练却 80% 就算过，两个入口两把尺子，掌握与否全看从哪进。
+             * 判定统一到 ListenService.exactMatch，和提交判分同一口径。
+             */
+            correct = ListenService.exactMatch(entity.getCorrectAnswer(), userAnswer);
         } else if (gq != null) {
             // 语法题：正确答案与用户输入都翻译成选项内容再比 ——
             // 用户重练时可以敲 "women teachers"，也可以顺手敲 "B"，两种都认

@@ -6,7 +6,11 @@
       <div class="hero-stats">
         <div class="hero-stat"><b>{{ ov.studyDays ?? 0 }}</b><span>学习天数</span></div>
         <div class="hero-stat"><b>{{ ov.totalQuestions ?? 0 }}</b><span>累计答题</span></div>
-        <div class="hero-stat"><b>{{ ov.accuracy ?? 0 }}%</b><span>正确率</span></div>
+        <!-- 覆盖题数：正确率的分母，和「累计答题」放进同一屏才不会被误读 -->
+        <div class="hero-stat"><b>{{ ov.coveredQuestions ?? 0 }}</b><span>覆盖题数</span></div>
+        <div class="hero-stat" title="每道题只取最近一次结果，重复练习不会把历史错误一直累加进分母">
+          <b>{{ ov.accuracy ?? 0 }}%</b><span>正确率</span>
+        </div>
       </div>
     </div>
 

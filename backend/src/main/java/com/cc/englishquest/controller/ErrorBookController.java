@@ -20,12 +20,13 @@ public class ErrorBookController {
 
     private final ErrorBookService errorBookService;
 
-    /** 错题列表 */
+    /** 错题列表（sort：times 错得最多 / oldest 最早做错 / 默认最近做错） */
     @GetMapping("/list")
     public Result<List<ErrorBook>> list(@RequestParam(required = false) String module,
                                         @RequestParam(required = false) Integer status,
-                                        @RequestParam(required = false) String keyword) {
-        return Result.success(errorBookService.list(UserContext.userId(), module, status, keyword));
+                                        @RequestParam(required = false) String keyword,
+                                        @RequestParam(required = false) String sort) {
+        return Result.success(errorBookService.list(UserContext.userId(), module, status, keyword, sort));
     }
 
     /** 未掌握数量 */

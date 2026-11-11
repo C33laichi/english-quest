@@ -344,8 +344,15 @@ function splitPos(text) {
   return m ? { pos: m[1], text: m[2] } : { pos: '', text: raw }
 }
 
-/** 拼写题的题干：有 hint 用 hint（音标），否则用释义 */
-const stemView = computed(() => splitPos(q.value.hint || q.value.stem))
+/*
+ * 拼写题的题干固定取释义。
+ *
+ * 不能写成 `hint || stem` —— 后端的 hint 装的是音标（VocabService:113），
+ * 一旦词条补上音标，题干就会变成一串音标、中文释义整个消失，
+ * 而且下面还有一个 v-if="q.phonetic" 会把音标再显示一遍。
+ * 现在库里音标恰好全空才没暴露，属于迟早会炸的写法。
+ */
+const stemView = computed(() => splitPos(q.value.stem))
 const isLast = computed(() => current.value >= questions.value.length)
 const curAnswer = computed(() => answers.value[current.value - 1]?.userAnswer || '')
 const answeredCount = computed(() => answers.value.filter((a) => a.userAnswer).length)

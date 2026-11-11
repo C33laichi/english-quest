@@ -103,7 +103,7 @@
           </div>
           <div class="muted gain-detail">
             <template v-if="gainParts.length">{{ gainParts.join(' · ') }}</template>
-            <template v-else>本次没有可结算的积分（该关奖励已领取过，或已达今日上限）</template>
+            <template v-else>本次没有可结算的积分（该关的答题分与通关奖励都已在之前结算过）</template>
             <template v-if="gainNote">　{{ gainNote }}</template>
           </div>
         </div>

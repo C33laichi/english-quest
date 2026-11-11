@@ -23,7 +23,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -321,7 +320,6 @@ public class ListenService {
         }
 
         // ---------- 积分结算 ----------
-        String today = LocalDate.now().toString();
         int perCorrect = hard ? POINT_PER_CORRECT_HARD : POINT_PER_CORRECT_EASY;
         int gain = 0;
         int ansPt = 0;
@@ -330,7 +328,7 @@ public class ListenService {
         int checkinPt = 0;
         if (correctCount > 0) {
             ansPt = pointService.addPoints(userId, correctCount * perCorrect, PointType.ANSWER,
-                    "ans-" + MODULE + "-" + mode + "-" + levelId + "-" + today,
+                    "ans-" + MODULE + "-" + mode + "-" + levelId,
                     "听力听写答对 " + correctCount + " 句");
             gain += ansPt;
         }

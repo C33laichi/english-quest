@@ -24,7 +24,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -252,10 +251,9 @@ public class GrammarService {
             userLessonMapper.updateById(progress);
         }
 
-        String today = LocalDate.now().toString();
         int gain = 0;
         int ansPt = pointService.addPoints(userId, correctCount * pointService.getAnswerPoint(),
-                PointType.ANSWER, "ans-" + MODULE + "-" + day + "-" + today, "语法闯关答题得分");
+                PointType.ANSWER, "ans-" + MODULE + "-" + day, "语法闯关答题得分");
         int lvPt = 0;
         int fullPt = 0;
         int checkinPt = 0;

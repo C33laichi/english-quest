@@ -53,7 +53,7 @@
         <div class="muted" style="line-height:2;font-size:13px">
           技术栈：Spring Boot 3.5 + MyBatis-Plus + MySQL 8 / Vue 3 + Element Plus<br />
           鉴权方式：JWT 无状态令牌（有效期 7 天）<br />
-          积分引擎：每日上限 200 分，答题类上限 100 分<br />
+          积分引擎：bizId 幂等去重，同一关卡只结算一次，不设每日上限<br />
           AI 出题：Mock 本地题库 / 大模型双通道，按日限流
         </div>
       </div>

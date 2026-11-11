@@ -5,7 +5,7 @@
         <div>
           <div class="hero-name">Lv.{{ overview.level ?? 1 }} {{ overview.levelName || '' }}</div>
           <div class="hero-sub">
-            总积分 {{ overview.totalPoints ?? 0 }} · 今日 {{ overview.todayPoints ?? 0 }}/{{ overview.dailyLimit ?? 200 }}
+            总积分 {{ overview.totalPoints ?? 0 }} · 今日 +{{ overview.todayPoints ?? 0 }}
           </div>
         </div>
         <div class="chip gold" style="background:rgba(255,255,255,.22);color:#fff">
@@ -82,8 +82,8 @@
             <div class="rule-item"><span>🎁 完成任务</span><b>见任务</b></div>
           </div>
           <div class="muted" style="margin-top:12px;font-size:12px">
-            通关与满分奖励每个关卡只发一次；答题分同一关卡每天只结算一次。
-            每日最多获得 {{ overview.dailyLimit ?? 200 }} 积分，答题类每日上限 100 分（防止刷分）
+            通关与满分奖励每个关卡只发一次；答题分同一关卡也只结算一次，通关后重新挑战不再计分。
+            积分不设每日上限，每日任务、打卡与登录奖励照常发放。
           </div>
         </div>
       </div>

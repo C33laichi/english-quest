@@ -24,7 +24,7 @@ import java.util.Date;
 import java.util.List;
 
 /**
- * 积分引擎：负责积分发放、每日上限控制、等级换算、连续打卡
+ * 积分引擎：负责积分发放（幂等去重）、等级换算、连续打卡
  */
 @Slf4j
 @Service
@@ -33,9 +33,6 @@ public class PointService {
 
     private final PointLogMapper pointLogMapper;
     private final UserMapper userMapper;
-
-    @Value("${app.point.daily-limit:200}")
-    private int dailyLimit;
 
     @Value("${app.point.answer-point:2}")
     private int answerPoint;
@@ -59,15 +56,17 @@ public class PointService {
     @Value("${app.point.checkin-point:5}")
     private int checkinPoint;
 
-    @Value("${app.point.answer-daily-limit:100}")
-    private int answerDailyLimit;
-
     /** 等级门槛（累计积分）与称号 */
     private static final int[] LEVEL_THRESHOLD = {0, 100, 300, 600, 1000, 2000};
     private static final String[] LEVEL_NAME = {"英语学徒", "单词猎人", "语法游侠", "闯关达人", "学霸精英", "专升本王者"};
 
     /**
-     * 发放积分（幂等 + 每日上限）
+     * 发放积分（幂等去重，不设每日上限）
+     *
+     * <p>防刷只靠 bizId + 唯一索引：同一关卡、同一天打卡、同一个每日任务各只入账一次。
+     * 早期这里还压着「每日总分上限」与「答题类单独上限」两道截断，后果是学生闯完关再去领
+     * 每日任务，奖励被上限吃掉 —— 明细里根本没有那一笔，看起来就是功能坏了。
+     * 2026-11-11 起两道上限全部去掉，改为「关卡通过后再次闯关不再计分」。</p>
      *
      * @param type  {@link PointType}
      * @param bizId 业务唯一标识，重复发放会被唯一索引拦截
@@ -79,26 +78,7 @@ public class PointService {
             return 0;
         }
 
-        // 1. 每日总上限控制
-        int todayTotal = todayTotalPoints(userId);
-        if (todayTotal >= dailyLimit) {
-            log.debug("用户 {} 今日积分已达上限 {}", userId, dailyLimit);
-            return 0;
-        }
-        // 2. 答题类积分另有上限
-        if (PointType.ANSWER.equals(type)) {
-            int answerToday = todayPointsByType(userId, PointType.ANSWER);
-            if (answerToday >= answerDailyLimit) {
-                return 0;
-            }
-            points = Math.min(points, answerDailyLimit - answerToday);
-        }
-        points = Math.min(points, dailyLimit - todayTotal);
-        if (points <= 0) {
-            return 0;
-        }
-
-        // 3. 写入流水（唯一索引保证幂等）
+        // 写入流水（唯一索引保证幂等）
         PointLog logEntity = new PointLog();
         logEntity.setUserId(userId);
         logEntity.setChangePoints(points);
@@ -122,19 +102,10 @@ public class PointService {
         return points;
     }
 
-    /** 今日已获得积分 */
+    /** 今日已获得积分（仅用于首页展示，不再作为上限依据） */
     public int todayTotalPoints(Long userId) {
         List<PointLog> logs = pointLogMapper.selectList(new LambdaQueryWrapper<PointLog>()
                 .eq(PointLog::getUserId, userId)
-                .ge(PointLog::getCreateTime, LocalDate.now().atStartOfDay()));
-        return logs.stream().mapToInt(PointLog::getChangePoints).sum();
-    }
-
-    /** 今日某类型积分 */
-    public int todayPointsByType(Long userId, String type) {
-        List<PointLog> logs = pointLogMapper.selectList(new LambdaQueryWrapper<PointLog>()
-                .eq(PointLog::getUserId, userId)
-                .eq(PointLog::getType, type)
                 .ge(PointLog::getCreateTime, LocalDate.now().atStartOfDay()));
         return logs.stream().mapToInt(PointLog::getChangePoints).sum();
     }
@@ -310,10 +281,6 @@ public class PointService {
 
     public int getCheckinPoint() {
         return checkinPoint;
-    }
-
-    public int getDailyLimit() {
-        return dailyLimit;
     }
 
     /** 今日日期字符串（yyyy-MM-dd） */

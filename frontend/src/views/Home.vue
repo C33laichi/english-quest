@@ -187,7 +187,7 @@
           <div class="rule-row"><span>每日首次登录</span><b>+5</b></div>
           <div class="rule-row"><span>每日打卡</span><b>+5</b></div>
           <div class="muted" style="font-size:12px;margin-top:10px">
-            答题分同一关卡每天只结算一次；每日上限 200，其中答题类 100
+            答题分同一关卡只结算一次，通关后重新挑战不再计分；积分不设每日上限
           </div>
         </div>
       </div>
@@ -272,8 +272,7 @@ async function doCheckin() {
     const res = await gameApi.checkin()
     /*
      * gainPoints 是后端算出来的**实发**分数，不能再用 `?? 5` 兜底：
-     * 今日已打卡或当天已达上限时它会是 0，兜底会把「一分没加」说成「+5」，
-     * 学生一加总分就发现对不上。
+     * 今日已打卡时它会是 0，兜底会把「一分没加」说成「+5」，学生一加总分就发现对不上。
      */
     if (res.gainPoints > 0) {
       ElMessage.success(`打卡成功，+${res.gainPoints} 积分，连续 ${res.streakDays} 天`)
@@ -293,7 +292,7 @@ async function doCheckin() {
 async function claimTask(t) {
   const res = await gameApi.claim(t.code)
   // 后端返回的是 gainPoints（实发），任务卡片上的 rewardPoints 是**标称**奖励；
-  // 触碰每日上限时两者不等，提示语必须说实发值，否则学生按标称累加就对不上账
+  // 提示语必须说实发值，否则学生按标称累加就对不上账
   const gain = res.gainPoints ?? res.rewardPoints ?? t.rewardPoints
   ElMessage.success(`领取成功，+${gain} 积分`)
   await loadAll()

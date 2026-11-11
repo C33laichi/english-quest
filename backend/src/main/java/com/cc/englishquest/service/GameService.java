@@ -42,7 +42,6 @@ public class GameService {
         vo.setNextLevelPoints(levelInfo[2] < 0 ? -1 : levelInfo[2] - levelInfo[1]);
         vo.setStreakDays(user.getStreakDays() == null ? 0 : user.getStreakDays());
         vo.setTodayPoints(pointService.todayTotalPoints(userId));
-        vo.setDailyLimit(pointService.getDailyLimit());
         vo.setCheckedToday(LocalDate.now().equals(user.getLastStudyDate()));
         vo.setRankNo(rankNo(userId));
         // 等级阶梯一并下发，首页的等级问号悬浮卡片直接用

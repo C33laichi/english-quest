@@ -21,7 +21,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -212,14 +211,13 @@ public class VocabService {
         }
 
         // ---------- 积分结算 ----------
-        String today = LocalDate.now().toString();
         int gain = 0;
         int lvPt = 0;
         int fullPt = 0;
         int checkinPt = 0;
-        // 答题积分（同一关卡每天只结算一次，防止重复刷分）
+        // 答题积分（每个关卡只结算一次：通关后重新挑战同一关不再计分）
         int ansPt = pointService.addPoints(userId, correctCount * pointService.getAnswerPoint(),
-                PointType.ANSWER, "ans-" + MODULE + "-" + levelId + "-" + today, "词汇闯关答题得分");
+                PointType.ANSWER, "ans-" + MODULE + "-" + levelId, "词汇闯关答题得分");
         gain += ansPt;
         if (passed) {
             lvPt = pointService.addPoints(userId, pointService.getLevelPoint(),

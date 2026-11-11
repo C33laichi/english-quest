@@ -46,11 +46,8 @@ public class GameOverviewVO {
 
     private Integer streakDays;
 
-    /** 今日已获得积分（受每日上限约束） */
+    /** 今日已获得积分（仅展示用，系统不再设每日上限） */
     private Integer todayPoints;
-
-    /** 每日积分上限 */
-    private Integer dailyLimit;
 
     /** 是否已打卡 */
     private Boolean checkedToday;
